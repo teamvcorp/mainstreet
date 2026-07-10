@@ -1,5 +1,3 @@
-import { formatCurrency } from "@/lib/utils";
-
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -14,64 +12,9 @@ export interface OrderEmailItem {
   weightOz?: number;
 }
 
-/** Buyer order confirmation. */
-export function buyerConfirmationEmail(input: {
-  orderId: string;
-  businessName: string;
-  items: OrderEmailItem[];
-  subtotalCents: number;
-  shippingCents: number;
-  totalCents: number;
-  fulfillmentType: "ship" | "pickup";
-}) {
-  const lines = input.items
-    .map((i) => `  ${i.quantity} × ${i.name} — ${formatCurrency(i.unitPriceCents * i.quantity)}`)
-    .join("\n");
-  const text = [
-    `Thanks for your order from ${input.businessName}!`,
-    ``,
-    lines,
-    ``,
-    `Subtotal: ${formatCurrency(input.subtotalCents)}`,
-    input.shippingCents > 0 ? `Shipping: ${formatCurrency(input.shippingCents)}` : `Local pickup`,
-    `Total:    ${formatCurrency(input.totalCents)}`,
-    ``,
-    input.fulfillmentType === "pickup"
-      ? `You chose local pickup — the shop will be in touch.`
-      : `We'll email you tracking as soon as it ships.`,
-    ``,
-    `Order ref: ${input.orderId}`,
-  ].join("\n");
-  return {
-    subject: `Your MainStreet order from ${input.businessName}`,
-    text,
-    html: wrap(text),
-  };
-}
-
-/** Buyer "your order shipped" notification. */
-export function shippedEmail(input: {
-  orderId: string;
-  businessName: string;
-  carrier?: string;
-  service?: string;
-  trackingNumber?: string;
-}) {
-  const text = [
-    `Good news — your order from ${input.businessName} has shipped!`,
-    ``,
-    input.carrier ? `Carrier: ${[input.carrier, input.service].filter(Boolean).join(" ")}` : "",
-    input.trackingNumber ? `Tracking #: ${input.trackingNumber}` : "",
-    ``,
-    `Order ref: ${input.orderId}`,
-  ]
-    .filter((l) => l !== "")
-    .join("\n");
-  return { subject: `Your order from ${input.businessName} has shipped`, text, html: wrap(text) };
-}
-
 /**
- * SL Pack & Ship fulfillment handoff. Subject begins with "!! important" per the
+ * SL Pack & Ship fulfillment handoff — kept as a plain, unstyled ops email
+ * (React templates are for customers). Subject begins with "!! important" per the
  * operations requirement, and the body carries the receiver + full package info.
  */
 export function packAndShipHandoffEmail(input: {
@@ -104,7 +47,9 @@ export function packAndShipHandoffEmail(input: {
     ),
     ``,
     `Estimated total weight: ${totalWeight || "n/a"} oz`,
-  ].join("\n");
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
   return {
     subject: `!! important — MainStreet shipment ${input.orderId}`,
     text,

@@ -6,7 +6,7 @@ import "@/lib/models/Business";
 import "@/lib/models/User";
 import { fulfillOrderSchema } from "@/schemas/fulfillment";
 import { sendEmail } from "@/lib/email";
-import { shippedEmail } from "@/lib/order-emails";
+import { buildShipped } from "@/emails/Shipped";
 import { errorResponse } from "@/lib/api";
 
 /**
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
       if (buyer?.email) {
         await sendEmail({
           to: buyer.email,
-          ...shippedEmail({
+          ...buildShipped({
             orderId: id,
             businessName: biz?.name ?? "the shop",
             carrier: order.carrier,

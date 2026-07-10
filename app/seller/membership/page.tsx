@@ -20,11 +20,19 @@ export default function MembershipPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/memberships/status")
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus(null))
-      .finally(() => setLoading(false));
+    (async () => {
+      // Backstop: reconcile plan from Stripe before reading status, so a paid
+      // membership shows immediately even if the webhook hasn't landed.
+      await fetch("/api/memberships/sync", { method: "POST" }).catch(() => {});
+      try {
+        const r = await fetch("/api/memberships/status");
+        setStatus(await r.json());
+      } catch {
+        setStatus(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   async function go(path: string, body?: unknown) {

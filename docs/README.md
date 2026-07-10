@@ -55,6 +55,15 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
 
 - **Phase 6** (memberships & billing): **$150/yr** seller membership + **$5/mo per +50 items** packs via Stripe subscription Checkout (inline `price_data`, no Price IDs). `lib/billing.ts` `applySubscription()` (idempotent) drives tier/expiry/itemLimit; handled in the shared payments webhook (`checkout.session.completed` subscription + `customer.subscription.updated/deleted`). `/seller/membership` (upgrade, add packs, Stripe Customer Portal for manage/cancel). Upgrading auto-unlocks event posting. ✅ build-green + gates verified. See `memberships.md`.
 
+- **Phase 8** (email & notifications): React Email templates (`emails/` — order confirmation, shipped, weekly digest) rendered via Resend; `sendEmail()` accepts a `react` element. **From must be @fyht4.com** (Resend-verified). Weekly **town digest** (`lib/digest.ts`) → `GET /api/cron/weekly-digest` (Bearer `CRON_SECRET` or admin) on a Vercel Cron (`vercel.json`, Mondays). Order/shipped emails wired into checkout + fulfillment. ✅ build-green + cron gate verified. See `email.md`.
+
+- **Phase 9** (admin panel): `/admin` **revenue dashboard** (KPIs: revenue, shipping margin, GMV, orders, members, towns) + nav. `/admin/gaps` (unmet-demand report from `search_exits`), `/admin/suggestions` (outreach status), `/admin/towns` (add/edit tagline+hero, hide, delete — blocked if active shops), `/admin/users` (role changes + send password reset), `/admin/digest` (manual send). Plus earlier `/admin/businesses`, `/admin/orders`, `/admin/events`. `lib/admin-stats.ts` aggregations. ✅ build-green + gates verified. Confidential margins shown only in admin views.
+
+- **Fixes (post-Phase-9)**:
+  - **Membership tier sync**: paying $150 upgrades tier via the Stripe webhook, but that won't fire on localhost without `stripe listen` (or before the prod endpoint is registered). Added `POST /api/memberships/sync` (reconciles active subs from Stripe), called on `/seller/membership` load → tier reflects payment immediately regardless of webhooks. Prod: still register the webhook + `STRIPE_WEBHOOK_SECRET` for real-time + cancellations.
+  - **Image "file too large"**: `lib/image-compress.ts` downscales (≤1600px, webp) in-browser before upload in `ImageUpload`, so large photos/logos/banners just work; 5 MB server check remains a backstop.
+  - **Storefront logo**: page already prefers `logoUrl` (falls back to a Store icon only when none uploaded). With uploads fixed + a live Blob store, the uploaded logo now displays.
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.

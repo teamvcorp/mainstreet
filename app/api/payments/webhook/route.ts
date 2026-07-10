@@ -10,7 +10,8 @@ import {
 } from "@/lib/orders";
 import { applySubscription } from "@/lib/billing";
 import { sendEmail } from "@/lib/email";
-import { buyerConfirmationEmail, packAndShipHandoffEmail, type OrderEmailItem } from "@/lib/order-emails";
+import { packAndShipHandoffEmail, type OrderEmailItem } from "@/lib/order-emails";
+import { buildOrderConfirmation } from "@/emails/OrderConfirmation";
 
 /**
  * Stripe webhook. Signature-verified + idempotent (WebhookEvent unique index).
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
       if (order.buyerId?.email) {
         await sendEmail({
           to: order.buyerId.email,
-          ...buyerConfirmationEmail({
+          ...buildOrderConfirmation({
             orderId,
             businessName,
             items: emailItems,

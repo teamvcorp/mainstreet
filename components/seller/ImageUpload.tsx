@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
+import { compressImage } from "@/lib/image-compress";
 
 /**
  * Single-image uploader → POST /api/upload (Vercel Blob). Shows a preview and a
@@ -27,8 +28,10 @@ export function ImageUpload({
     setError(null);
     setLoading(true);
     try {
+      // Shrink large photos in-browser so uploads don't hit the size limit.
+      const optimized = await compressImage(file);
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", optimized);
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
