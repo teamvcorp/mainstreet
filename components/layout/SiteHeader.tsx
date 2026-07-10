@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Store, Search, MapPin, CalendarDays } from "lucide-react";
+import { Search, MapPin, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { CartButton } from "@/components/layout/CartButton";
+import { Wordmark } from "@/components/layout/Wordmark";
 
 /**
  * Site-wide header. Server component — the search form is a plain GET form
@@ -12,12 +14,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-primary text-primary-foreground">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
         {/* Wordmark */}
-        <Link href="/" className="flex items-center gap-2 font-serif text-xl font-semibold">
-          <Store className="size-6 text-accent" aria-hidden />
-          <span>
-            MainStreet<span className="text-accent">.shop</span>
-          </span>
-        </Link>
+        <Wordmark />
 
         {/* Platform-only search */}
         <form action="/search" method="get" className="order-last w-full sm:order-0 sm:w-auto sm:flex-1 sm:max-w-md">
@@ -50,6 +47,7 @@ export function SiteHeader() {
           <Button asChild variant="accent" size="sm">
             <Link href="/onboard/start">Sell</Link>
           </Button>
+          <CartButton />
           <AccountMenu />
         </nav>
       </div>

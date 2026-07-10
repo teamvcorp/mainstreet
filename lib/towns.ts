@@ -4,6 +4,7 @@ import { Business, type IBusiness } from "@/lib/models/Business";
 import { Event, type IEvent } from "@/lib/models/Event";
 import { milesToMeters, metersToMiles } from "@/lib/geo";
 import { toBusinessDTO, toEventDTO } from "@/lib/dto";
+import { slugify } from "@/lib/utils";
 
 export interface TownListItem {
   id: string;
@@ -115,6 +116,75 @@ export async function getTowns(opts: GetTownsOpts = {}): Promise<TownListItem[]>
     businessCount: bizMap.get(String(t._id)) ?? 0,
     upcomingEventCount: evMap.get(String(t._id)) ?? 0,
   }));
+}
+
+/**
+ * Find or auto-create the town a business belongs to, derived from its address.
+ * Towns are keyed by city+state (a logical grouping); each business's zip is
+ * accumulated on the town for zipcode-grouping reports. Race-safe via the unique
+ * slug index (a concurrent create just re-reads the winner).
+ */
+export async function findOrCreateTownForAddress(input: {
+  city: string;
+  state: string;
+  zip?: string;
+  lat?: number;
+  lng?: number;
+}): Promise<{ id: string; slug: string }> {
+  await connectToDatabase();
+  const city = input.city.trim();
+  const state = input.state.trim().toUpperCase().slice(0, 2);
+  const slug = slugify(`${city}-${state}`);
+
+  const existing = await Town.findOne({ slug });
+  if (existing) {
+    // Backfill coords/zip if we learned them from this signup.
+    let dirty = false;
+    if (input.zip && !existing.zips.includes(input.zip)) {
+      existing.zips.push(input.zip);
+      dirty = true;
+    }
+    if (typeof existing.lat !== "number" && typeof input.lat === "number") {
+      existing.lat = input.lat;
+      existing.lng = input.lng;
+      dirty = true;
+    }
+    if (dirty) await existing.save();
+    return { id: existing._id.toString(), slug: existing.slug };
+  }
+
+  try {
+    const created = await Town.create({
+      name: city,
+      state,
+      slug,
+      lat: input.lat,
+      lng: input.lng,
+      zips: input.zip ? [input.zip] : [],
+      autoCreated: true,
+      isActive: true,
+    });
+    return { id: created._id.toString(), slug: created.slug };
+  } catch (err: unknown) {
+    // Duplicate key from a concurrent create — re-read the winner.
+    if (err && typeof err === "object" && (err as { code?: number }).code === 11000) {
+      const t = await Town.findOne({ slug });
+      if (t) return { id: t._id.toString(), slug: t.slug };
+    }
+    throw err;
+  }
+}
+
+/** Delete a town if it has no active businesses and no events (tidy after prune). */
+export async function deleteTownIfEmpty(townId: string): Promise<void> {
+  await connectToDatabase();
+  const [bizCount, evCount] = await Promise.all([
+    Business.countDocuments({ townId, isActive: true }),
+    Event.countDocuments({ townId }),
+  ]);
+  if (bizCount === 0 && evCount === 0) {
+    await Town.deleteOne({ _id: townId, autoCreated: true });
+  }
 }
 
 /** Full data for a single town's public page (/town/[slug]). Null if not found. */

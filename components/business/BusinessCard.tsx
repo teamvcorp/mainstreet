@@ -27,7 +27,7 @@ export function BusinessCard({ business }: { business: BusinessCardData }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-muted text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-secondary to-muted text-muted-foreground">
             <Store className="size-8 opacity-70" aria-hidden />
           </div>
         )}

@@ -8,39 +8,44 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export interface TownOption {
-  id: string;
-  name: string;
-  state: string;
-}
-
-export function OnboardStartForm({ towns }: { towns: TownOption[] }) {
+/**
+ * Address-driven onboarding. We derive (and auto-create) the town from the
+ * business's location — no town list to pick from. City/State/ZIP are required
+ * so the shop lands in the right hometown grouping.
+ */
+export function OnboardStartForm() {
   const router = useRouter();
   const { update } = useSession();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
-  const [townId, setTownId] = useState("");
   const [description, setDescription] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!townId) {
-      setError("Please choose your town.");
-      return;
-    }
     setSubmitting(true);
 
     const res = await fetch("/api/businesses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, category: category || undefined, townId, description: description || undefined }),
+      body: JSON.stringify({
+        name,
+        category: category || undefined,
+        description: description || undefined,
+        street: street || undefined,
+        city,
+        state,
+        zip,
+      }),
     });
 
     if (res.status === 409) {
-      // Already has a shop — just go to the dashboard.
       router.push("/seller");
       return;
     }
@@ -67,26 +72,34 @@ export function OnboardStartForm({ towns }: { towns: TownOption[] }) {
         <Label htmlFor="category">Category</Label>
         <Input id="category" placeholder="bakery, hardware, boutique…" value={category} onChange={(e) => setCategory(e.target.value)} />
       </div>
-      <div>
-        <Label htmlFor="town">Your town</Label>
-        <select
-          id="town"
-          value={townId}
-          onChange={(e) => setTownId(e.target.value)}
-          className="flex h-11 w-full rounded-md border border-input bg-card px-3 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          required
-        >
-          <option value="">Select a town…</option>
-          {towns.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}, {t.state}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Don&apos;t see your town? We&apos;re adding new towns constantly — reach out and we&apos;ll set yours up.
+
+      <fieldset className="rounded-lg border border-border p-4">
+        <legend className="px-1 text-sm font-medium">Where are you located?</legend>
+        <p className="mb-3 text-xs text-muted-foreground">
+          We&apos;ll place your shop on your hometown&apos;s page automatically.
         </p>
-      </div>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="street">Street address (optional)</Label>
+            <Input id="street" value={street} onChange={(e) => setStreet(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="col-span-2">
+              <Label htmlFor="city">City / Town</Label>
+              <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} required />
+            </div>
+            <div>
+              <Label htmlFor="state">State</Label>
+              <Input id="state" maxLength={2} placeholder="IA" value={state} onChange={(e) => setState(e.target.value.toUpperCase())} required />
+            </div>
+            <div>
+              <Label htmlFor="zip">ZIP</Label>
+              <Input id="zip" inputMode="numeric" maxLength={5} value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, ""))} required />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
       <div>
         <Label htmlFor="description">Short description</Label>
         <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />

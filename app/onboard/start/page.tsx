@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
 import { getMyBusiness } from "@/lib/seller";
-import { getTowns } from "@/lib/towns";
 import { OnboardStartForm } from "@/components/seller/OnboardStartForm";
 
 export const metadata: Metadata = { title: "Open your shop" };
@@ -15,21 +14,18 @@ export default async function OnboardStartPage() {
   const existing = await getMyBusiness(user.id);
   if (existing) redirect("/seller");
 
-  const towns = await getTowns({ limit: 200 });
-
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
       <header className="mb-8">
         <p className="text-sm font-medium text-accent-foreground">Step 1 of 3</p>
         <h1 className="mt-1 font-serif text-4xl font-semibold">Open your shop on MainStreet</h1>
         <p className="mt-2 text-muted-foreground">
-          Tell us the basics. Next you&apos;ll add your story and set up payouts.
+          Tell us the basics and where you&apos;re located — we&apos;ll set up your hometown page
+          automatically. Next you&apos;ll add your story and set up payouts.
         </p>
       </header>
 
-      <OnboardStartForm
-        towns={towns.map((t) => ({ id: t.id, name: t.name, state: t.state }))}
-      />
+      <OnboardStartForm />
     </div>
   );
 }

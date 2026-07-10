@@ -16,11 +16,17 @@ const dayHoursSchema = z.object({
 });
 export const hoursSchema = z.record(z.string(), dayHoursSchema);
 
+// Town is derived from the address (auto-created), so onboarding collects a
+// location instead of picking from a list. City/state/zip are required for
+// grouping; street is optional (some businesses are home-based / by appointment).
 export const createBusinessSchema = z.object({
   name: z.string().min(2, "Business name is required").max(120),
   category: z.string().max(60).optional(),
-  townId: objectId,
   description: z.string().max(2000).optional(),
+  street: z.string().max(200).optional(),
+  city: z.string().min(2, "City is required").max(120),
+  state: z.string().length(2, "Use the 2-letter state").transform((s) => s.toUpperCase()),
+  zip: z.string().regex(/^\d{5}$/, "Enter a 5-digit ZIP"),
 });
 export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
 

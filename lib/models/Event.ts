@@ -1,27 +1,8 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
+import { EVENT_CATEGORIES, type EventCategory } from "@/lib/event-categories";
 
-export type EventCategory =
-  | "festival"
-  | "sale"
-  | "sports"
-  | "fundraiser"
-  | "farmers_market"
-  | "music"
-  | "town_hall"
-  | "school"
-  | "other";
-
-export const EVENT_CATEGORIES: EventCategory[] = [
-  "festival",
-  "sale",
-  "sports",
-  "fundraiser",
-  "farmers_market",
-  "music",
-  "town_hall",
-  "school",
-  "other",
-];
+export { EVENT_CATEGORIES };
+export type { EventCategory };
 
 export interface IEvent {
   _id: Types.ObjectId;
@@ -53,7 +34,7 @@ const EventSchema = new Schema<IEvent>(
     postedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     title: { type: String, required: true },
     description: String,
-    category: { type: String, enum: EVENT_CATEGORIES, default: "other", index: true },
+    category: { type: String, enum: [...EVENT_CATEGORIES], default: "other", index: true },
     startAt: { type: Date, required: true, index: true },
     endAt: Date,
     locationName: String,

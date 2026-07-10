@@ -43,6 +43,8 @@ export interface IBusiness {
   shipsOnline: boolean;
   acceptsLocalPickup: boolean;
   isActive: boolean;
+  /** Admin has confirmed this is a real local business (vs. spam/unverified). */
+  verified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +80,7 @@ const BusinessSchema = new Schema<IBusiness>(
     shipsOnline: { type: Boolean, default: false },
     acceptsLocalPickup: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true },
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

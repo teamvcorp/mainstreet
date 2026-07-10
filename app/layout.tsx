@@ -4,6 +4,8 @@ import "./globals.css";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 // Fonts are self-hosted by next/font (no external CDN request) — good for CSP,
 // performance, and privacy. Exposed as CSS variables consumed in globals.css.
@@ -15,20 +17,22 @@ const fraunces = Fraunces({
   weight: ["400", "500", "600", "700"],
 });
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(appUrl),
+  metadataBase: new URL(SITE.url),
   title: {
-    default: "MainStreet.shop — America's Hometown Digital Platform",
-    template: "%s | MainStreet.shop",
+    default: "MainStreet — America's Hometown Marketplace & Community",
+    template: "%s | MainStreet",
   },
-  description:
-    "Discover local businesses, events, and community across small-town America. Shop local, support your neighbors.",
+  description: SITE.description,
+  applicationName: SITE.name,
   openGraph: {
-    siteName: "MainStreet.shop",
+    siteName: SITE.name,
     type: "website",
+    locale: "en_US",
+    url: SITE.url,
   },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -41,6 +45,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {/* Site-wide structured data: the org (linked to the VA Corp network) + the site search box. */}
+        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <SessionProvider>
           <SiteHeader />
           <main className="flex-1">{children}</main>

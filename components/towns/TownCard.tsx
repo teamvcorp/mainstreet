@@ -19,7 +19,7 @@ export function TownCard({ town }: { town: TownListItem }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/90 to-primary/60 text-primary-foreground">
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-primary/90 to-primary/60 text-primary-foreground">
             <MapPin className="size-8 opacity-80" aria-hidden />
           </div>
         )}

@@ -6,6 +6,9 @@ import { getTownPageData } from "@/lib/towns";
 import { BusinessCard } from "@/components/business/BusinessCard";
 import { EventListItem } from "@/components/events/EventListItem";
 import { ShareButton } from "@/components/util/ShareButton";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd, townJsonLd, eventJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -23,9 +26,11 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical: `/town/${town.slug}` },
     openGraph: {
       title: `${town.name} — Your Hometown Hub`,
       description,
+      url: `/town/${town.slug}`,
       images: town.heroImageUrl ? [town.heroImageUrl] : undefined,
     },
   };
@@ -44,6 +49,19 @@ export default async function TownPage({
 
   return (
     <div>
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Towns", path: "/towns" },
+            { name: `${town.name}, ${town.state}`, path: `/town/${town.slug}` },
+          ]),
+          townJsonLd(town),
+          ...events.map((e) =>
+            eventJsonLd({ ...e, town: { name: town.name, state: town.state } }),
+          ),
+        ]}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border">
         {town.heroImageUrl ? (
@@ -52,7 +70,7 @@ export default async function TownPage({
             <div className="absolute inset-0 bg-primary/70" />
           </div>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary to-primary/80" />
         )}
         <div className="relative mx-auto max-w-7xl px-4 py-16 text-primary-foreground sm:px-6">
           <p className="inline-flex items-center gap-1.5 text-sm font-medium opacity-90">
@@ -75,6 +93,19 @@ export default async function TownPage({
           </div>
         </div>
       </section>
+
+      {/* Breadcrumb bar (cross-links back up to the towns directory) */}
+      <div className="border-b border-border bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
+          <Breadcrumbs
+            items={[
+              { name: "Home", path: "/" },
+              { name: "Towns", path: "/towns" },
+              { name: `${town.name}, ${town.state}`, path: `/town/${town.slug}` },
+            ]}
+          />
+        </div>
+      </div>
 
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-3">
         {/* Businesses */}

@@ -18,6 +18,10 @@ export interface ITown {
   heroImageUrl?: string;
   tagline?: string;
   population?: number;
+  /** Zip codes seen for businesses in this town — logical grouping metadata. */
+  zips: string[];
+  /** Auto-created from a business address vs. curated by an admin. */
+  autoCreated: boolean;
   spotlightBusinessId?: Types.ObjectId;
   isActive: boolean;
   createdAt: Date;
@@ -39,6 +43,8 @@ const TownSchema = new Schema<ITown>(
     heroImageUrl: String,
     tagline: String,
     population: Number,
+    zips: { type: [String], default: [] },
+    autoCreated: { type: Boolean, default: false },
     spotlightBusinessId: { type: Schema.Types.ObjectId, ref: "Business" },
     isActive: { type: Boolean, default: true },
   },
