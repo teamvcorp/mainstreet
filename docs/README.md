@@ -53,6 +53,8 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
 - **Phase 5** (fulfillment & label recall): admin/SL-Pack-&-Ship **`/admin/orders`** attaches tracking # + label (PDF/image upload or pasted URL) → marks shipped (emails buyer) / delivered, with admin-only margin display. Seller **`/seller/orders`** + detail (buyer address, items, tracking, **reprint label**, mark pickup fulfilled). Buyer tracking on `/orders/[id]`. Confidential margin/carrier cost never leaves admin views. ✅ build-green + gates verified. See `fulfillment.md`.
 - **Vercel Blob fix**: stale-store errors now return a clear message (503) instead of a 500; label uploads (PDF) supported. To re-enable image/label uploads: create a Blob store in Vercel and `vercel env pull .env.local` (businesses onboard fine without images meanwhile).
 
+- **Phase 6** (memberships & billing): **$150/yr** seller membership + **$5/mo per +50 items** packs via Stripe subscription Checkout (inline `price_data`, no Price IDs). `lib/billing.ts` `applySubscription()` (idempotent) drives tier/expiry/itemLimit; handled in the shared payments webhook (`checkout.session.completed` subscription + `customer.subscription.updated/deleted`). `/seller/membership` (upgrade, add packs, Stripe Customer Portal for manage/cancel). Upgrading auto-unlocks event posting. ✅ build-green + gates verified. See `memberships.md`.
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.

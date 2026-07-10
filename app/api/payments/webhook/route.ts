@@ -8,6 +8,7 @@ import {
   markOrderPaid,
   decrementInventoryForOrder,
 } from "@/lib/orders";
+import { applySubscription } from "@/lib/billing";
 import { sendEmail } from "@/lib/email";
 import { buyerConfirmationEmail, packAndShipHandoffEmail, type OrderEmailItem } from "@/lib/order-emails";
 
@@ -43,8 +44,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
+  // --- Subscriptions (memberships + item packs) ---
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    await applySubscription(event.data.object as Stripe.Subscription);
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+
+    // Subscription checkouts (membership / item packs) — apply and return.
+    if (session.mode === "subscription") {
+      const subId =
+        typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+      if (subId) {
+        const sub = await getStripe().subscriptions.retrieve(subId);
+        await applySubscription(sub);
+      }
+      return NextResponse.json({ received: true });
+    }
+
     const orderIds = (session.metadata?.orderIds ?? "").split(",").filter(Boolean);
     const piId =
       typeof session.payment_intent === "string"
