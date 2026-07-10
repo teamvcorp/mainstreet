@@ -10,7 +10,6 @@ import { Wordmark } from "@/components/layout/Wordmark";
  *   anchor text, absolute https URLs, no rel="nofollow" on network links.
  */
 export function SiteFooter() {
-  const amazonUrl = process.env.NEXT_PUBLIC_AMAZON_STOREFRONT_URL;
   const year = new Date().getFullYear();
 
   return (
@@ -76,16 +75,13 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
           <p>© {year} MainStreet — a VA Corp program. All rights reserved.</p>
-          {amazonUrl ? (
-            <a
-              href={amazonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground/70 transition-colors hover:text-muted-foreground"
-            >
-              Can&apos;t find it locally? Our Amazon store →
-            </a>
-          ) : null}
+          {/* Addendum A: the quietest link on the page — routes to our in-app shop. */}
+          <Link
+            href="/shop"
+            className="text-muted-foreground/70 transition-colors hover:text-muted-foreground"
+          >
+            Can&apos;t find it locally? Our Amazon store →
+          </Link>
         </div>
       </div>
     </footer>

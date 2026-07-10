@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Search as SearchIcon } from "lucide-react";
 import { searchAll, getAdjacentTowns } from "@/lib/search";
+import { amazonSearchUrl, getAmazonTopMatch } from "@/lib/amazon";
 import { BusinessCard } from "@/components/business/BusinessCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { EventListItem } from "@/components/events/EventListItem";
@@ -45,7 +46,10 @@ export default async function SearchPage({
   const total = businesses.length + products.length + events.length;
 
   if (total === 0) {
-    const adjacent = town ? await getAdjacentTowns(town) : [];
+    const [adjacent, amazonMatch] = await Promise.all([
+      town ? getAdjacentTowns(town) : Promise.resolve([]),
+      getAmazonTopMatch(query), // null until PA-API is configured
+    ]);
     return (
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
         <h1 className="mb-8 font-serif text-2xl font-semibold">Results for “{query}”</h1>
@@ -53,7 +57,8 @@ export default async function SearchPage({
           query={query}
           townSlug={town}
           adjacentTowns={adjacent.map((t) => ({ name: t.name, state: t.state, slug: t.slug }))}
-          amazonUrl={process.env.NEXT_PUBLIC_AMAZON_STOREFRONT_URL}
+          amazonSearchUrl={amazonSearchUrl(query)}
+          amazonMatch={amazonMatch}
         />
       </div>
     );

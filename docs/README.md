@@ -64,6 +64,9 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
   - **Image "file too large"**: `lib/image-compress.ts` downscales (≤1600px, webp) in-browser before upload in `ImageUpload`, so large photos/logos/banners just work; 5 MB server check remains a backstop.
   - **Storefront logo**: page already prefers `logoUrl` (falls back to a Store icon only when none uploaded). With uploads fixed + a live Blob store, the uploaded logo now displays.
 
+- **Amazon fallback** (`/shop` + empty-search): in-app branded page (can't iframe Amazon — new-tab pattern keeps "back to local" one tab away), quiet affiliate search links, category tiles, `AmazonLink` exit tracking, affiliate disclosure. **Silent product+price** on empty search is PA-API-ready (`lib/amazon.ts` `getAmazonTopMatch` → renders a silent card when keys exist; subtle search link until then). ✅ build-green + verified. See `amazon.md`.
+- **Phase 10** (polish/hardening): security audit clean (no confidential-field leaks; only non-secret `NEXT_PUBLIC_*`; signed idempotent webhooks; Zod + rate limits + CSP/HSTS). `npm audit` = 2 transitive-postcss moderates (accepted). Full production **deploy checklist** in `docs/deploy.md`. Follow-ups: nonce CSP, PA-API, Sentry.
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.

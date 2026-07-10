@@ -8,6 +8,13 @@ import { User } from "@/lib/models/User";
 import { loginSchema } from "@/schemas/auth";
 
 /**
+ * Google is OPTIONAL. Email/password (Credentials) works fully on its own.
+ * We only register the Google provider when its env is present, so there are no
+ * warnings or dead buttons in a credentials-only setup.
+ */
+export const googleAuthEnabled = !!(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+
+/**
  * Full Auth.js setup (Node runtime). Uses JWT sessions and upserts users into
  * our own Mongoose `users` collection (no adapter) so the User model stays the
  * single source of truth for roles, town, favorites, etc.
@@ -16,11 +23,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
   providers: [
-    Google({
-      // allowDangerousEmailAccountLinking lets a Google login attach to an
-      // existing email/password account with the same verified email.
-      allowDangerousEmailAccountLinking: true,
-    }),
+    ...(googleAuthEnabled
+      ? [
+          Google({
+            // Lets a Google login attach to an existing email/password account
+            // with the same verified email.
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       credentials: { email: {}, password: {} },
       async authorize(raw) {
