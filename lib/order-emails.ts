@@ -49,6 +49,27 @@ export function buyerConfirmationEmail(input: {
   };
 }
 
+/** Buyer "your order shipped" notification. */
+export function shippedEmail(input: {
+  orderId: string;
+  businessName: string;
+  carrier?: string;
+  service?: string;
+  trackingNumber?: string;
+}) {
+  const text = [
+    `Good news — your order from ${input.businessName} has shipped!`,
+    ``,
+    input.carrier ? `Carrier: ${[input.carrier, input.service].filter(Boolean).join(" ")}` : "",
+    input.trackingNumber ? `Tracking #: ${input.trackingNumber}` : "",
+    ``,
+    `Order ref: ${input.orderId}`,
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+  return { subject: `Your order from ${input.businessName} has shipped`, text, html: wrap(text) };
+}
+
 /**
  * SL Pack & Ship fulfillment handoff. Subject begins with "!! important" per the
  * operations requirement, and the body carries the receiver + full package info.

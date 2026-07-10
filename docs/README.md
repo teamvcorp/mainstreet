@@ -50,6 +50,9 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
 
 - **Phase 4** (checkout/shipping/payments): `/checkout` (address → per-shop shipping/pickup → pay), EasyPost rate shopping with hidden **1.85× markup** (carrier cost server-only; dev estimate fallback), pending orders (server-priced, inventory-checked), **hosted Stripe Checkout** (multi-seller `transfer_group`), idempotent signed **webhook** → paid + per-seller transfers (subtotal only) + buyer confirmation + **SL Pack & Ship `!! important` handoff email**. Functional `/cart` → `/orders` + `/orders/[id]`. ✅ build-green + gates verified. Needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (+ `stripe listen`) for the live paid flow; `EASYPOST_API_KEY` optional (estimate fallback). See `checkout.md`.
 
+- **Phase 5** (fulfillment & label recall): admin/SL-Pack-&-Ship **`/admin/orders`** attaches tracking # + label (PDF/image upload or pasted URL) → marks shipped (emails buyer) / delivered, with admin-only margin display. Seller **`/seller/orders`** + detail (buyer address, items, tracking, **reprint label**, mark pickup fulfilled). Buyer tracking on `/orders/[id]`. Confidential margin/carrier cost never leaves admin views. ✅ build-green + gates verified. See `fulfillment.md`.
+- **Vercel Blob fix**: stale-store errors now return a clear message (503) instead of a 500; label uploads (PDF) supported. To re-enable image/label uploads: create a Blob store in Vercel and `vercel env pull .env.local` (businesses onboard fine without images meanwhile).
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.

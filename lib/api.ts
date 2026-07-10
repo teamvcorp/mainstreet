@@ -24,6 +24,14 @@ export function errorResponse(err: unknown): NextResponse {
     case "STRIPE_NOT_CONFIGURED":
     case "BLOB_NOT_CONFIGURED":
       return NextResponse.json({ error: "This feature isn't configured yet." }, { status: 501 });
+    case "BLOB_STORE_MISSING":
+      return NextResponse.json(
+        {
+          error:
+            "Image storage isn't set up yet. Create a Vercel Blob store and update BLOB_READ_WRITE_TOKEN.",
+        },
+        { status: 503 },
+      );
     case "UNSUPPORTED_TYPE":
       return NextResponse.json({ error: "Only image files are allowed." }, { status: 415 });
     case "FILE_TOO_LARGE":

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Store, CalendarDays } from "lucide-react";
+import { Store, CalendarDays, Truck } from "lucide-react";
 
 export const metadata: Metadata = { title: "Admin" };
 
@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Admin" };
 export default function AdminHome() {
   const cards = [
     { href: "/admin/businesses", icon: Store, title: "Businesses", body: "Verify, suspend, or delete listings. Towns auto-group by address." },
+    { href: "/admin/orders", icon: Truck, title: "Fulfillment", body: "Attach tracking + labels (SL Pack & Ship), advance order status." },
     { href: "/admin/events", icon: CalendarDays, title: "Event moderation", body: "Approve or reject events flagged for review." },
   ];
   return (
