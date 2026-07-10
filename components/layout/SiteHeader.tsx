@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { CartButton } from "@/components/layout/CartButton";
 import { Wordmark } from "@/components/layout/Wordmark";
+import { LanguageToggle } from "@/components/layout/LanguageToggle";
+import { T } from "@/components/i18n/T";
+import { LocalizedSearchInput } from "@/components/i18n/LocalizedSearchInput";
 
 /**
  * Site-wide header. Server component — the search form is a plain GET form
@@ -20,11 +23,8 @@ export function SiteHeader() {
         <form action="/search" method="get" className="order-last w-full sm:order-0 sm:w-auto sm:flex-1 sm:max-w-md">
           <div className="flex items-center gap-2 rounded-lg bg-primary-foreground/10 px-3 py-2 ring-1 ring-inset ring-primary-foreground/15 focus-within:ring-accent">
             <Search className="size-4 opacity-70" aria-hidden />
-            <input
-              type="search"
-              name="q"
-              placeholder="Search local businesses, products, events…"
-              aria-label="Search MainStreet"
+            <LocalizedSearchInput
+              placeholderKey="nav.search"
               className="w-full bg-transparent text-sm placeholder:text-primary-foreground/60 focus:outline-none"
             />
           </div>
@@ -36,17 +36,20 @@ export function SiteHeader() {
             href="/towns"
             className="hidden items-center gap-1.5 rounded-md px-3 py-2 hover:bg-primary-foreground/10 md:flex"
           >
-            <MapPin className="size-4 text-accent" aria-hidden /> Towns
+            <MapPin className="size-4 text-accent" aria-hidden /> <T k="nav.towns" />
           </Link>
           <Link
             href="/events"
             className="hidden items-center gap-1.5 rounded-md px-3 py-2 hover:bg-primary-foreground/10 md:flex"
           >
-            <CalendarDays className="size-4 text-accent" aria-hidden /> Events
+            <CalendarDays className="size-4 text-accent" aria-hidden /> <T k="nav.events" />
           </Link>
           <Button asChild variant="accent" size="sm">
-            <Link href="/onboard/start">Sell</Link>
+            <Link href="/onboard/start">
+              <T k="nav.sell" />
+            </Link>
           </Button>
+          <LanguageToggle />
           <CartButton />
           <AccountMenu />
         </nav>

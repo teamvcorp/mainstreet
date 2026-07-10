@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
@@ -47,11 +48,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Site-wide structured data: the org (linked to the VA Corp network) + the site search box. */}
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
-        <SessionProvider>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </SessionProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </SessionProvider>
+        </I18nProvider>
       </body>
     </html>
   );

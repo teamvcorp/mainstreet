@@ -67,6 +67,8 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
 - **Amazon fallback** (`/shop` + empty-search): in-app branded page (can't iframe Amazon — new-tab pattern keeps "back to local" one tab away), quiet affiliate search links, category tiles, `AmazonLink` exit tracking, affiliate disclosure. **Silent product+price** on empty search is PA-API-ready (`lib/amazon.ts` `getAmazonTopMatch` → renders a silent card when keys exist; subtle search link until then). ✅ build-green + verified. See `amazon.md`.
 - **Phase 10** (polish/hardening): security audit clean (no confidential-field leaks; only non-secret `NEXT_PUBLIC_*`; signed idempotent webhooks; Zod + rate limits + CSP/HSTS). `npm audit` = 2 transitive-postcss moderates (accepted). Full production **deploy checklist** in `docs/deploy.md`. Follow-ups: nonce CSP, PA-API, Sentry.
 
+- **i18n (EN/ES toggle)**: header language toggle localizes **UI copy only** (never business/user data). Client-side switch with an **English SSR/SSG baseline** (town/store pages stay static + English-indexed for SEO); Spanish swaps on toggle, persisted via `NEXT_LOCALE` cookie. `lib/i18n/*` (en/es dicts, Claude-reviewed), `I18nProvider` + `<T>` + `useT` + `LocalizedSearchInput` + `LanguageToggle`. Header/footer/homepage translated; other pages migrate incrementally via `<T>`. ✅ build-green (SSG preserved) + EN baseline/toggle verified. See `i18n.md`.
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.
