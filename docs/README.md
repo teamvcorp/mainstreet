@@ -28,6 +28,9 @@ learn something non-obvious. (Org policy: keep docs on-machine; take detailed no
 ## Phase log
 - **Phase 0** (foundation): deps, models, DTOs, theme, layout shell, config, docs. ✅ build-green, app boots, security headers live.
 - **Phase 1** (auth): Auth.js v5 (Credentials + Google), JWT sessions + Mongoose upsert, `proxy.ts` route gating (verified: /account /seller /admin /checkout redirect to /login), signup + password reset (hashed single-use tokens), account page, AccountMenu island. ✅ build-green; live login/signup needs `MONGODB_URI`. See `authjs.md`.
+- **Town Finder** (`/towns` + `/town/[slug]`): location-aware discovery — "Share my location" (browser geolocation) OR ZIP lookup, plus a radius slider (10–250 mi, presets) that expands the search area. `Town` model gained a GeoJSON `location` + `2dsphere` index; `getTowns()` uses `$geoNear` with business/event counts. Town page has hero, businesses grid, this-week events, share button, SEO metadata. Geo zip lookup via Google (`lib/geocode.ts`); `/api/geo/zip` returns friendly 501 without a key so "Share location" still works. ✅ build-green + UI verified. Seed data: `node --env-file=.env.local scripts/seed-towns.mjs` (12 real towns). Full nearby results need `MONGODB_URI`; ZIP lookup needs `GOOGLE_MAPS_API_KEY`.
+
+- **Phase 2** (seller): onboarding (`/onboard/start` → creates shop, promotes to seller, refreshes JWT), seller dashboard with setup checklist, store profile editor (logo/banner via Blob, address geocoded), product CRUD with item-limit enforcement, image upload API, **Stripe Connect Express** hosted onboarding (`/api/connect/*`). ✅ build-green; gates verified (seller routes → /login, APIs → 401). Live flows need `MONGODB_URI` + `BLOB_READ_WRITE_TOKEN` + `STRIPE_SECRET_KEY`. See `stripe-connect.md`, `vercel-blob.md`.
 
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:

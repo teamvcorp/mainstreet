@@ -53,7 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * requests `user` is undefined, so this is a no-op (no DB hit) — the proxy
      * never triggers this branch.
      */
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user?.email) {
         const email = user.email;
         await connectToDatabase();
@@ -71,6 +71,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.id = dbUser._id.toString();
           token.role = dbUser.role;
         }
+      } else if (trigger === "update" && token.id) {
+        // Client called session.update() (e.g. after becoming a seller) — refresh
+        // the role from the DB so the proxy/UI see it without a full re-login.
+        await connectToDatabase();
+        const dbUser = await User.findById(token.id).select("role");
+        if (dbUser) token.role = dbUser.role;
       }
       return token;
     },
