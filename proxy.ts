@@ -6,5 +6,11 @@ export { proxy } from "@/lib/auth-proxy";
 
 export const config = {
   // Gate seller/admin/account/checkout. Cart is intentionally guest-friendly.
-  matcher: ["/seller/:path*", "/admin/:path*", "/account/:path*", "/checkout/:path*"],
+  matcher: [
+    "/seller/:path*",
+    "/admin/:path*",
+    "/account/:path*",
+    "/checkout/:path*",
+    "/orders/:path*",
+  ],
 };

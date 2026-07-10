@@ -29,7 +29,11 @@ export const authConfig = {
       if (path.startsWith("/seller")) {
         return isLoggedIn && (user.role === "seller" || user.role === "admin");
       }
-      if (path.startsWith("/account") || path.startsWith("/checkout")) {
+      if (
+        path.startsWith("/account") ||
+        path.startsWith("/checkout") ||
+        path.startsWith("/orders")
+      ) {
         return isLoggedIn;
       }
       return true;

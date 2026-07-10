@@ -93,8 +93,8 @@ export default function CartPage() {
           Shipping is calculated per shop at checkout. You&apos;ll choose a delivery option (or local
           pickup) for each business.
         </p>
-        <Button size="lg" className="mt-4 w-full" disabled title="Checkout launches with shipping (next phase)">
-          Checkout — opening soon
+        <Button asChild size="lg" className="mt-4 w-full">
+          <Link href="/checkout">Proceed to checkout</Link>
         </Button>
       </div>
     </div>

@@ -48,6 +48,8 @@ Your `.env.local` already has everything required (`MONGODB_URI`, `AUTH_SECRET`,
 4. To moderate: make yourself admin — `node --env-file=.env.local scripts/grant-role.mjs you@example.com --admin` — then visit `/admin/businesses`.
 Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (emails), Google OAuth (social login), Anthropic (AI event screening; local fallback works without it).
 
+- **Phase 4** (checkout/shipping/payments): `/checkout` (address → per-shop shipping/pickup → pay), EasyPost rate shopping with hidden **1.85× markup** (carrier cost server-only; dev estimate fallback), pending orders (server-priced, inventory-checked), **hosted Stripe Checkout** (multi-seller `transfer_group`), idempotent signed **webhook** → paid + per-seller transfers (subtotal only) + buyer confirmation + **SL Pack & Ship `!! important` handoff email**. Functional `/cart` → `/orders` + `/orders/[id]`. ✅ build-green + gates verified. Needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (+ `stripe listen`) for the live paid flow; `EASYPOST_API_KEY` optional (estimate fallback). See `checkout.md`.
+
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:
 - **DB:** `MONGODB_URI` → `npm run db:check`, then sign up at `/signup`, sign in at `/login`.

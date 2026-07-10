@@ -60,7 +60,8 @@ const OrderSchema = new Schema<IOrder>(
       index: true,
     },
     fulfillmentType: { type: String, enum: ["ship", "pickup"], required: true },
-    stripePaymentIntentId: { type: String, unique: true, sparse: true },
+    // NOT unique: one PaymentIntent can cover multiple sub-orders (multi-seller cart).
+    stripePaymentIntentId: { type: String, index: true },
     stripeTransferId: String,
     subtotalCents: { type: Number, required: true },
     shippingCents: { type: Number, default: 0 },
