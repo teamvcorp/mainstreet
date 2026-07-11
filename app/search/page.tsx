@@ -8,6 +8,8 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { EventListItem } from "@/components/events/EventListItem";
 import { SearchEmptyState } from "@/components/search/SearchEmptyState";
 import { cn } from "@/lib/utils";
+import { T } from "@/components/i18n/T";
+import { LocalizedSearchInput } from "@/components/i18n/LocalizedSearchInput";
 
 // Search result pages shouldn't be indexed (thin/duplicative); the indexable
 // SEO assets are town + store + product pages.
@@ -30,13 +32,15 @@ export default async function SearchPage({
     return (
       <div className="mx-auto max-w-2xl px-4 py-20 text-center sm:px-6">
         <SearchIcon className="mx-auto size-10 text-muted-foreground" />
-        <h1 className="mt-3 font-serif text-2xl font-semibold">Search MainStreet</h1>
+        <h1 className="mt-3 font-serif text-2xl font-semibold">
+          <T k="search.title" />
+        </h1>
         <p className="mt-1 text-muted-foreground">
-          Find local businesses, products, and events — only from our hometown network.
+          <T k="search.subtitle" />
         </p>
         <form action="/search" method="get" className="mx-auto mt-6 flex max-w-md items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm">
           <SearchIcon className="ml-2 size-4 text-muted-foreground" />
-          <input name="q" autoFocus placeholder="Try “bakery” or “candles”" className="w-full bg-transparent px-1 focus:outline-none" />
+          <LocalizedSearchInput placeholderKey="search.placeholder" autoFocus className="w-full bg-transparent px-1 focus:outline-none" />
         </form>
       </div>
     );
@@ -52,7 +56,9 @@ export default async function SearchPage({
     ]);
     return (
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-        <h1 className="mb-8 font-serif text-2xl font-semibold">Results for “{query}”</h1>
+        <h1 className="mb-8 font-serif text-2xl font-semibold">
+          <T k="search.resultsFor" /> “{query}”
+        </h1>
         <SearchEmptyState
           query={query}
           townSlug={town}
@@ -80,31 +86,31 @@ export default async function SearchPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <h1 className="font-serif text-3xl font-semibold">
-        Results for “{query}”
+        <T k="search.resultsFor" /> “{query}”
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {total} local {total === 1 ? "match" : "matches"} on MainStreet
+        {total} <T k={total === 1 ? "search.match" : "search.matches"} />
       </p>
 
       {/* Tabs */}
       <div className="mt-5 flex flex-wrap gap-2 border-b border-border pb-3">
         {(
           [
-            ["all", `All (${total})`],
-            ["businesses", `Shops (${businesses.length})`],
-            ["products", `Products (${products.length})`],
-            ["events", `Events (${events.length})`],
-          ] as [Tab, string][]
-        ).map(([t, label]) => (
+            ["all", "search.all", total],
+            ["businesses", "search.shops", businesses.length],
+            ["products", "search.products", products.length],
+            ["events", "search.events", events.length],
+          ] as [Tab, string, number][]
+        ).map(([tabKey, labelKey, count]) => (
           <Link
-            key={t}
-            href={buildTab(t)}
+            key={tabKey}
+            href={buildTab(tabKey)}
             className={cn(
               "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
+              tab === tabKey ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
             )}
           >
-            {label}
+            <T k={labelKey} /> ({count})
           </Link>
         ))}
       </div>
@@ -112,7 +118,9 @@ export default async function SearchPage({
       <div className="mt-8 space-y-10">
         {showBiz && businesses.length > 0 && (
           <section>
-            <h2 className="mb-4 font-serif text-xl font-semibold">Local shops</h2>
+            <h2 className="mb-4 font-serif text-xl font-semibold">
+              <T k="search.localShops" />
+            </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {businesses.map((b) => (
                 <BusinessCard
@@ -126,7 +134,9 @@ export default async function SearchPage({
 
         {showProd && products.length > 0 && (
           <section>
-            <h2 className="mb-4 font-serif text-xl font-semibold">Products</h2>
+            <h2 className="mb-4 font-serif text-xl font-semibold">
+              <T k="search.products" />
+            </h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {products.map((p) => (
                 <ProductCard
@@ -140,7 +150,9 @@ export default async function SearchPage({
 
         {showEvents && events.length > 0 && (
           <section>
-            <h2 className="mb-4 font-serif text-xl font-semibold">Events</h2>
+            <h2 className="mb-4 font-serif text-xl font-semibold">
+              <T k="search.events" />
+            </h2>
             <div className="space-y-3">
               {events.map((e) => (
                 <EventListItem

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n/I18nProvider";
 
 /**
  * Optimistic RSVP toggle. If the user isn't signed in, the API returns 401 and
@@ -17,6 +18,7 @@ export function RsvpButton({
   initialCount: number;
 }) {
   const router = useRouter();
+  const t = useT();
   const [count, setCount] = useState(initialCount);
   const [rsvped, setRsvped] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export function RsvpButton({
       ) : (
         <Heart className={cn("size-4", rsvped && "fill-current")} />
       )}
-      {count > 0 ? count : ""} {rsvped ? "Going" : "RSVP"}
+      {count > 0 ? count : ""} {rsvped ? t("common.going") : t("common.rsvp")}
     </button>
   );
 }

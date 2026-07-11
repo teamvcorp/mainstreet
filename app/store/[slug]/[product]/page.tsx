@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { formatCurrency } from "@/lib/utils";
+import { T } from "@/components/i18n/T";
 
 export const revalidate = 300;
 
@@ -137,12 +138,13 @@ export default async function ProductPage({
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             {b.shipsOnline && (
               <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-success">
-                <Truck className="size-3.5" /> Ships from {b.town?.name ?? "the shop"}
+                <Truck className="size-3.5" /> <T k="product.shipsFrom" />{" "}
+                {b.town?.name ?? <T k="product.theShop" />}
               </span>
             )}
             {b.acceptsLocalPickup && (
               <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-secondary-foreground">
-                <MapPin className="size-3.5" /> Local pickup available
+                <MapPin className="size-3.5" /> <T k="product.pickupAvailable" />
               </span>
             )}
           </div>
@@ -152,7 +154,9 @@ export default async function ProductPage({
       {/* Related */}
       {related.length > 0 && (
         <section className="mt-12">
-          <h2 className="font-serif text-xl font-semibold">More from {b.name}</h2>
+          <h2 className="font-serif text-xl font-semibold">
+            <T k="product.moreFrom" /> {b.name}
+          </h2>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {related.map((r) => (
               <ProductCard

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { MapPin, ArrowRight } from "lucide-react";
 import { SuggestBusinessForm } from "@/components/search/SuggestBusinessForm";
 import { AmazonLink } from "@/components/shop/AmazonLink";
+import { useT } from "@/components/i18n/I18nProvider";
 
 interface AdjacentTown {
   name: string;
@@ -39,6 +40,7 @@ export function SearchEmptyState({
   amazonSearchUrl?: string;
   amazonMatch?: AmazonMatch | null;
 }) {
+  const t = useT();
   useEffect(() => {
     void fetch("/api/search/exit", {
       method: "POST",
@@ -52,11 +54,9 @@ export function SearchEmptyState({
       {/* Layer 1 — suggest a business */}
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="font-serif text-xl font-semibold">
-          No local results for “{query}”{townSlug ? " here" : ""} yet.
+          {t("search.noneTitle")} “{query}”.
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Know a local business that carries this? Nominate them — we&apos;ll invite them to MainStreet.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("search.nominate")}</p>
         <div className="mt-4">
           <SuggestBusinessForm searchQuery={query} townSlug={townSlug} />
         </div>
@@ -65,7 +65,7 @@ export function SearchEmptyState({
       {/* Layer 2 — adjacent towns */}
       {adjacentTowns.length > 0 && (
         <section>
-          <h3 className="font-serif text-lg font-semibold">Check nearby towns</h3>
+          <h3 className="font-serif text-lg font-semibold">{t("search.nearby")}</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {adjacentTowns.map((t) => (
               <Link
@@ -99,27 +99,28 @@ export function SearchEmptyState({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-foreground">{amazonMatch.title}</span>
                 <span className="text-xs text-muted-foreground">
-                  Available on Amazon{amazonMatch.priceText ? ` · ${amazonMatch.priceText}` : ""}
+                  {t("search.available")}
+                  {amazonMatch.priceText ? ` · ${amazonMatch.priceText}` : ""}
                 </span>
               </span>
               <ArrowRight className="size-4 text-muted-foreground" />
             </AmazonLink>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Can&apos;t find it locally?{" "}
+              {t("search.amazonHint")}{" "}
               <AmazonLink
                 href={amazonSearchUrl!}
                 query={query}
                 className="text-muted-foreground/80 underline underline-offset-2 hover:text-muted-foreground"
               >
-                See “{query}” on Amazon
+                {t("search.seeOnAmazon")} “{query}” {t("search.onAmazon")}
               </AmazonLink>
             </p>
           )}
           <p className="mt-1 text-xs text-muted-foreground/70">
-            Proceeds support this platform and the small businesses on it.{" "}
+            {t("search.proceeds")}{" "}
             <Link href={`/shop?q=${encodeURIComponent(query)}`} className="underline underline-offset-2">
-              More options
+              {t("search.moreOptions")}
             </Link>
           </p>
         </section>

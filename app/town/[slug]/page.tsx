@@ -9,6 +9,7 @@ import { ShareButton } from "@/components/util/ShareButton";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, townJsonLd, eventJsonLd } from "@/lib/seo";
+import { T } from "@/components/i18n/T";
 
 export const revalidate = 300;
 
@@ -110,7 +111,9 @@ export default async function TownPage({
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-3">
         {/* Businesses */}
         <section className="lg:col-span-2">
-          <h2 className="font-serif text-2xl font-semibold">Local businesses</h2>
+          <h2 className="font-serif text-2xl font-semibold">
+            <T k="town.localBusinesses" />
+          </h2>
           {businesses.length > 0 ? (
             <div className="mt-5 grid gap-6 sm:grid-cols-2">
               {businesses.map((b) => (
@@ -129,14 +132,16 @@ export default async function TownPage({
             </div>
           ) : (
             <p className="mt-4 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-              No shops here yet. Know a local business? Encourage them to join MainStreet.
+              <T k="town.noShops" />
             </p>
           )}
         </section>
 
         {/* This week's events */}
         <aside className="lg:col-span-1">
-          <h2 className="font-serif text-2xl font-semibold">This week</h2>
+          <h2 className="font-serif text-2xl font-semibold">
+            <T k="town.thisWeek" />
+          </h2>
           {events.length > 0 ? (
             <div className="mt-5 space-y-3">
               {events.map((e) => (
@@ -155,7 +160,7 @@ export default async function TownPage({
             </div>
           ) : (
             <p className="mt-4 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No events posted yet.
+              <T k="town.noEvents" />
             </p>
           )}
         </aside>

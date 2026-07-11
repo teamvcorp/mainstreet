@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, localBusinessJsonLd } from "@/lib/seo";
+import { T } from "@/components/i18n/T";
 
 export const revalidate = 300;
 
@@ -121,7 +122,7 @@ export default async function StorefrontPage({
           {/* Products */}
           <section className="lg:col-span-2">
             <h2 className="flex items-center gap-2 font-serif text-2xl font-semibold">
-              <ShoppingBag className="size-5 text-accent" /> Products
+              <ShoppingBag className="size-5 text-accent" /> <T k="store.products" />
             </h2>
             {products.length > 0 ? (
               <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -141,7 +142,7 @@ export default async function StorefrontPage({
               </div>
             ) : (
               <p className="mt-4 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-                This shop hasn&apos;t listed products yet.
+                <T k="store.noProducts" />
               </p>
             )}
           </section>
@@ -150,12 +151,16 @@ export default async function StorefrontPage({
           <aside className="space-y-6">
             {b.story && (
               <div>
-                <h3 className="font-serif text-lg font-semibold">Our story</h3>
+                <h3 className="font-serif text-lg font-semibold">
+                  <T k="store.ourStory" />
+                </h3>
                 <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{b.story}</p>
               </div>
             )}
             <div className="rounded-xl border border-border bg-card p-4 text-sm">
-              <h3 className="font-serif text-base font-semibold">Visit &amp; contact</h3>
+              <h3 className="font-serif text-base font-semibold">
+                <T k="store.visitContact" />
+              </h3>
               <ul className="mt-3 space-y-2 text-muted-foreground">
                 {b.address?.street && (
                   <li className="flex items-start gap-2">
@@ -182,7 +187,7 @@ export default async function StorefrontPage({
                   <li className="flex items-center gap-2">
                     <Globe className="size-4 text-accent" />
                     <a href={b.website} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
-                      Website
+                      <T k="store.website" />
                     </a>
                   </li>
                 )}
@@ -190,12 +195,12 @@ export default async function StorefrontPage({
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 {b.shipsOnline && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-success">
-                    <Truck className="size-3.5" /> Ships online
+                    <Truck className="size-3.5" /> <T k="store.shipsOnline" />
                   </span>
                 )}
                 {b.acceptsLocalPickup && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-secondary-foreground">
-                    <MapPin className="size-3.5" /> Local pickup
+                    <MapPin className="size-3.5" /> <T k="common.localPickup" />
                   </span>
                 )}
               </div>

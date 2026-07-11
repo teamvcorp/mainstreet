@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TownCard } from "@/components/towns/TownCard";
 import type { TownListItem } from "@/lib/towns";
+import { useT } from "@/components/i18n/I18nProvider";
 
 interface Origin {
   lat: number;
@@ -18,6 +19,7 @@ const MIN_RADIUS = 10;
 const MAX_RADIUS = 250;
 
 export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
+  const t = useT();
   const [towns, setTowns] = useState<TownListItem[]>(initialTowns);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [radius, setRadius] = useState(50);
@@ -117,23 +119,23 @@ export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm font-medium">Find towns near you</label>
+            <label className="mb-1.5 block text-sm font-medium">{t("towns.findNear")}</label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button type="button" variant="default" onClick={useMyLocation} disabled={loading}>
-                <LocateFixed className="size-4" /> Share my location
+                <LocateFixed className="size-4" /> {t("towns.shareLocation")}
               </Button>
               <form onSubmit={submitZip} className="flex flex-1 gap-2">
                 <Input
                   inputMode="numeric"
                   pattern="\d{5}"
                   maxLength={5}
-                  placeholder="or enter ZIP code"
+                  placeholder={t("towns.zipPlaceholder")}
                   value={zip}
                   onChange={(e) => setZip(e.target.value.replace(/\D/g, ""))}
                   aria-label="ZIP code"
                 />
                 <Button type="submit" variant="outline" disabled={loading}>
-                  <Search className="size-4" /> Go
+                  <Search className="size-4" /> {t("towns.go")}
                 </Button>
               </form>
             </div>
@@ -144,10 +146,10 @@ export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
         <div className="mt-5">
           <div className="flex items-center justify-between">
             <label htmlFor="radius" className="text-sm font-medium">
-              Search area
+              {t("towns.searchArea")}
             </label>
             <span className="text-sm font-semibold text-accent-foreground">
-              within {radius} miles
+              {t("towns.within")} {radius} {t("towns.miles")}
             </span>
           </div>
           <input
@@ -185,18 +187,18 @@ export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
         <p className="text-sm text-muted-foreground">
           {loading ? (
             <span className="inline-flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" /> Searching…
+              <Loader2 className="size-4 animate-spin" /> {t("towns.searching")}
             </span>
           ) : origin ? (
             <>
-              <span className="font-medium text-foreground">{towns.length}</span> town
-              {towns.length === 1 ? "" : "s"} within {radius} mi of{" "}
-              <span className="font-medium text-foreground">{origin.label}</span>
+              <span className="font-medium text-foreground">{towns.length}</span>{" "}
+              {towns.length === 1 ? t("towns.town") : t("towns.towns")} {t("towns.within")} {radius}{" "}
+              {t("towns.milesOf")} <span className="font-medium text-foreground">{origin.label}</span>
             </>
           ) : (
             <>
-              <span className="font-medium text-foreground">{towns.length}</span> town
-              {towns.length === 1 ? "" : "s"} on MainStreet
+              <span className="font-medium text-foreground">{towns.length}</span>{" "}
+              {towns.length === 1 ? t("towns.town") : t("towns.towns")} {t("towns.onMainStreet")}
             </>
           )}
         </p>
@@ -206,7 +208,7 @@ export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
             onClick={clearLocation}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
-            <X className="size-4" /> Clear
+            <X className="size-4" /> {t("common.clear")}
           </button>
         )}
       </div>
@@ -223,10 +225,8 @@ export function TownFinder({ initialTowns }: { initialTowns: TownListItem[] }) {
       ) : (
         !loading && (
           <div className="mt-8 rounded-xl border border-dashed border-border p-10 text-center">
-            <p className="font-serif text-lg">No towns in this area yet.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try widening the search area — or be the first to put your town on the map.
-            </p>
+            <p className="font-serif text-lg">{t("towns.noneTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("towns.noneBody")}</p>
           </div>
         )
       )}

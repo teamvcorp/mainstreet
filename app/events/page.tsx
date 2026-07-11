@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { CalendarDays, Plus } from "lucide-react";
 import { getPublicEvents, type PublicEvent } from "@/lib/events";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, eventJsonLd } from "@/lib/seo";
+import { T } from "@/components/i18n/T";
 
 export const metadata: Metadata = {
   title: "Community events",
@@ -79,21 +81,24 @@ export default async function EventsPage({
       />
       <header className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl font-semibold">What&apos;s happening</h1>
+          <h1 className="font-serif text-4xl font-semibold">
+            <T k="events.title" />
+          </h1>
           <p className="mt-1 text-muted-foreground">
-            Community events across MainStreet towns{town ? ` · ${town}` : ""}.
+            <T k="events.subtitle" />
+            {town ? ` · ${town}` : ""}.
           </p>
         </div>
         <Button asChild variant="accent">
           <Link href="/seller/events/new">
-            <Plus className="size-4" /> Post an event
+            <Plus className="size-4" /> <T k="events.postEvent" />
           </Link>
         </Button>
       </header>
 
       {/* Category filter */}
       <div className="mt-6 flex flex-wrap gap-2">
-        <FilterPill href={buildHref({ town })} active={!category} label="All" />
+        <FilterPill href={buildHref({ town })} active={!category} labelNode={<T k="events.all" />} />
         {EVENT_CATEGORIES.map((c) => (
           <FilterPill
             key={c}
@@ -121,9 +126,11 @@ export default async function EventsPage({
       ) : (
         <div className="mt-10 rounded-xl border border-dashed border-border p-12 text-center">
           <CalendarDays className="mx-auto size-8 text-muted-foreground" />
-          <p className="mt-2 font-serif text-lg">No events{category ? " in this category" : ""} yet</p>
+          <p className="mt-2 font-serif text-lg">
+            <T k={category ? "events.noneCat" : "events.none"} />
+          </p>
           <p className="text-sm text-muted-foreground">
-            Check back soon — or if you&apos;re a local business, be the first to post one.
+            <T k="events.noneBody" />
           </p>
         </div>
       )}
@@ -139,7 +146,17 @@ function buildHref(params: { town?: string; category?: string }): string {
   return qs ? `/events?${qs}` : "/events";
 }
 
-function FilterPill({ href, active, label }: { href: string; active: boolean; label: string }) {
+function FilterPill({
+  href,
+  active,
+  label,
+  labelNode,
+}: {
+  href: string;
+  active: boolean;
+  label?: string;
+  labelNode?: ReactNode;
+}) {
   return (
     <Link
       href={href}
@@ -148,7 +165,7 @@ function FilterPill({ href, active, label }: { href: string; active: boolean; la
         active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
       )}
     >
-      {label}
+      {labelNode ?? label}
     </Link>
   );
 }

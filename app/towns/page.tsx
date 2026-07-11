@@ -4,6 +4,7 @@ import { getTowns, type TownListItem } from "@/lib/towns";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { T } from "@/components/i18n/T";
 
 export const metadata: Metadata = {
   title: "Find your town",
@@ -41,10 +42,11 @@ export default async function TownsPage() {
         ]}
       />
       <header className="mb-8 mt-3 max-w-2xl">
-        <h1 className="font-serif text-4xl font-semibold">Find your town</h1>
+        <h1 className="font-serif text-4xl font-semibold">
+          <T k="towns.title" />
+        </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Every town with a local shop or event has a home here. Share your location or drop in a
-          ZIP code, then widen the circle to explore nearby communities.
+          <T k="towns.subtitle" />
         </p>
       </header>
 

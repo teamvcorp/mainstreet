@@ -7,8 +7,10 @@ import { Minus, Plus, Trash2, ShoppingCart, Package } from "lucide-react";
 import { useCart, cartSubtotalCents, groupByBusiness } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/components/i18n/I18nProvider";
 
 export default function CartPage() {
+  const t = useT();
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
@@ -21,10 +23,10 @@ export default function CartPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
         <ShoppingCart className="mx-auto size-10 text-muted-foreground" />
-        <h1 className="mt-3 font-serif text-2xl font-semibold">Your cart is empty</h1>
-        <p className="mt-1 text-muted-foreground">Discover local shops and add something you love.</p>
+        <h1 className="mt-3 font-serif text-2xl font-semibold">{t("cart.empty")}</h1>
+        <p className="mt-1 text-muted-foreground">{t("cart.emptyBody")}</p>
         <Button asChild className="mt-5">
-          <Link href="/towns">Explore towns</Link>
+          <Link href="/towns">{t("cart.exploreTowns")}</Link>
         </Button>
       </div>
     );
@@ -35,7 +37,7 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-3xl font-semibold">Your cart</h1>
+      <h1 className="font-serif text-3xl font-semibold">{t("cart.title")}</h1>
 
       <div className="mt-6 space-y-6">
         {groups.map((g) => (
@@ -86,15 +88,12 @@ export default function CartPage() {
       {/* Summary */}
       <div className="mt-8 rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-muted-foreground">{t("common.subtotal")}</span>
           <span className="text-xl font-semibold">{formatCurrency(subtotal)}</span>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Shipping is calculated per shop at checkout. You&apos;ll choose a delivery option (or local
-          pickup) for each business.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("cart.shippingNote")}</p>
         <Button asChild size="lg" className="mt-4 w-full">
-          <Link href="/checkout">Proceed to checkout</Link>
+          <Link href="/checkout">{t("cart.checkout")}</Link>
         </Button>
       </div>
     </div>

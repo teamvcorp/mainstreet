@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useT } from "@/components/i18n/I18nProvider";
 
 interface ShipOption {
   id: string;
@@ -33,6 +34,7 @@ interface Selection {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const t = useT();
   const items = useCart((s) => s.items);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -51,8 +53,8 @@ export default function CheckoutPage() {
   if (mounted && items.length === 0) {
     return (
       <div className="mx-auto max-w-xl px-4 py-20 text-center sm:px-6">
-        <p className="font-serif text-2xl">Your cart is empty.</p>
-        <Button className="mt-4" onClick={() => router.push("/towns")}>Explore towns</Button>
+        <p className="font-serif text-2xl">{t("checkout.emptyTitle")}</p>
+        <Button className="mt-4" onClick={() => router.push("/towns")}>{t("cart.exploreTowns")}</Button>
       </div>
     );
   }
@@ -134,42 +136,42 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-3xl font-semibold">Checkout</h1>
+      <h1 className="font-serif text-3xl font-semibold">{t("checkout.title")}</h1>
 
       {/* Shipping address */}
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-serif text-lg font-semibold">Shipping address</h2>
+        <h2 className="font-serif text-lg font-semibold">{t("checkout.shippingAddress")}</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label htmlFor="name">Full name</Label>
+            <Label htmlFor="name">{t("checkout.fullName")}</Label>
             <Input id="name" value={address.name} onChange={(e) => setAddress({ ...address, name: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="street">Street</Label>
+            <Label htmlFor="street">{t("checkout.street")}</Label>
             <Input id="street" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} />
           </div>
           <div>
-            <Label htmlFor="city">City</Label>
+            <Label htmlFor="city">{t("checkout.city")}</Label>
             <Input id="city" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="state">State</Label>
+              <Label htmlFor="state">{t("checkout.state")}</Label>
               <Input id="state" maxLength={2} value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase() })} />
             </div>
             <div>
-              <Label htmlFor="zip">ZIP</Label>
+              <Label htmlFor="zip">{t("checkout.zip")}</Label>
               <Input id="zip" inputMode="numeric" maxLength={5} value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value.replace(/\D/g, "") })} />
             </div>
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{t("checkout.phone")}</Label>
             <Input id="phone" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
           </div>
         </div>
         <Button className="mt-4" onClick={getRates} disabled={!addressComplete || loadingRates}>
           {loadingRates ? <Loader2 className="size-4 animate-spin" /> : null}
-          {shipping ? "Update shipping options" : "Get shipping options"}
+          {shipping ? t("checkout.updateRates") : t("checkout.getRates")}
         </Button>
       </section>
 
@@ -197,10 +199,10 @@ export default function CheckoutPage() {
               {b.pickupAvailable && (
                 <label className={cn("flex cursor-pointer items-center justify-between rounded-lg border p-3", sel?.mode === "pickup" ? "border-primary bg-primary/5" : "border-border")}>
                   <span className="flex items-center gap-2 text-sm">
-                    <MapPin className="size-4 text-accent" /> Local pickup
+                    <MapPin className="size-4 text-accent" /> {t("common.localPickup")}
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="font-medium">Free</span>
+                    <span className="font-medium">{t("common.free")}</span>
                     <input type="radio" name={`ship-${b.businessId}`} checked={sel?.mode === "pickup"} onChange={() => choosePickup(b)} className="size-4 accent-accent" />
                   </span>
                 </label>
@@ -216,25 +218,23 @@ export default function CheckoutPage() {
       {/* Summary */}
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-muted-foreground">{t("common.subtotal")}</span>
           <span>{formatCurrency(subtotal)}</span>
         </div>
         <div className="mt-1 flex justify-between text-sm">
-          <span className="text-muted-foreground">Shipping</span>
+          <span className="text-muted-foreground">{t("common.shipping")}</span>
           <span>{shipping ? formatCurrency(shippingTotal) : "—"}</span>
         </div>
         <div className="mt-3 flex justify-between border-t border-border pt-3 text-lg font-semibold">
-          <span>Total</span>
+          <span>{t("common.total")}</span>
           <span>{formatCurrency(subtotal + shippingTotal)}</span>
         </div>
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         <Button size="lg" className="mt-4 w-full" disabled={!shipping || paying} onClick={pay}>
           {paying ? <Loader2 className="size-4 animate-spin" /> : null}
-          Pay {formatCurrency(subtotal + shippingTotal)}
+          {t("checkout.pay")} {formatCurrency(subtotal + shippingTotal)}
         </Button>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Secure checkout by Stripe. You&apos;ll enter card details on the next screen.
-        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">{t("checkout.secure")}</p>
       </section>
     </div>
   );
