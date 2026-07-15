@@ -10,6 +10,19 @@ export interface OrderEmailItem {
   quantity: number;
   unitPriceCents: number;
   weightOz?: number;
+  dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
+}
+
+const OZ_PER_LB = 16;
+/** oz → "X.XX lb (N oz)" for the SL Pack & Ship team (they enter pounds). */
+function weightLine(oz?: number): string {
+  if (!oz) return "no weight on file";
+  return `${(oz / OZ_PER_LB).toFixed(2)} lb (${oz} oz)`;
+}
+function dimsLine(d?: { lengthIn?: number; widthIn?: number; heightIn?: number }): string {
+  if (!d || (!d.lengthIn && !d.widthIn && !d.heightIn)) return "no dimensions on file";
+  const n = (v?: number) => (typeof v === "number" ? v : "?");
+  return `${n(d.lengthIn)} × ${n(d.widthIn)} × ${n(d.heightIn)} in`;
 }
 
 /**
@@ -20,18 +33,29 @@ export interface OrderEmailItem {
 export function packAndShipHandoffEmail(input: {
   orderId: string;
   businessName: string;
+  shipFrom?: { street?: string; city?: string; state?: string; zip?: string; phone?: string };
   shippingAddress: { name?: string; street?: string; city?: string; state?: string; zip?: string; phone?: string };
   items: OrderEmailItem[];
   carrier?: string;
   service?: string;
 }) {
   const a = input.shippingAddress;
-  const totalWeight = input.items.reduce((n, i) => n + (i.weightOz ?? 0) * i.quantity, 0);
+  const f = input.shipFrom;
+  const totalOz = input.items.reduce((n, i) => n + (i.weightOz ?? 0) * i.quantity, 0);
   const text = [
     `!! important — new shipment to process`,
     ``,
     `Order ref: ${input.orderId}`,
-    `Ship from business: ${input.businessName}`,
+    ``,
+    `SHIP FROM`,
+    `  ${input.businessName}`,
+    ...(f
+      ? [
+          `  ${f.street ?? ""}`,
+          `  ${f.city ?? ""}, ${f.state ?? ""} ${f.zip ?? ""}`,
+          `  Phone: ${f.phone ?? ""}`,
+        ]
+      : [`  (no address on file for this business)`]),
     ``,
     `RECEIVER`,
     `  ${a.name ?? ""}`,
@@ -43,10 +67,11 @@ export function packAndShipHandoffEmail(input: {
     ``,
     `PACKAGE CONTENTS`,
     ...input.items.map(
-      (i) => `  ${i.quantity} × ${i.name}${i.weightOz ? ` (${i.weightOz} oz ea)` : ""}`,
+      (i) =>
+        `  ${i.quantity} × ${i.name}\n      weight: ${weightLine(i.weightOz)} ea\n      dimensions: ${dimsLine(i.dimensions)}`,
     ),
     ``,
-    `Estimated total weight: ${totalWeight || "n/a"} oz`,
+    `Estimated total weight: ${totalOz ? `${(totalOz / OZ_PER_LB).toFixed(2)} lb (${totalOz} oz)` : "n/a"}`,
   ]
     .filter((l) => l !== "")
     .join("\n");

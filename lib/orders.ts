@@ -67,7 +67,17 @@ export async function createPendingOrdersForCheckout(input: {
       businessId,
       isActive: true,
     }).lean<
-      { _id: { toString(): string }; name: string; slug: string; priceCents: number; images: string[]; inventoryQty: number; trackInventory: boolean; weightOz?: number }[]
+      {
+        _id: { toString(): string };
+        name: string;
+        slug: string;
+        priceCents: number;
+        images: string[];
+        inventoryQty: number;
+        trackInventory: boolean;
+        weightOz?: number;
+        dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
+      }[]
     >();
     const pMap = new Map(products.map((p) => [p._id.toString(), p]));
 
@@ -83,7 +93,13 @@ export async function createPendingOrdersForCheckout(input: {
         productId: p._id as unknown as IOrderItem["productId"],
         quantity: line.quantity,
         unitPriceCents: p.priceCents,
-        productSnapshot: { name: p.name, slug: p.slug, images: p.images, weightOz: p.weightOz },
+        productSnapshot: {
+          name: p.name,
+          slug: p.slug,
+          images: p.images,
+          weightOz: p.weightOz,
+          dimensions: p.dimensions,
+        },
       });
     }
 
@@ -131,12 +147,18 @@ export async function getOrderForFulfillment(orderId: string) {
   await connectToDatabase();
   const order = await Order.findById(orderId)
     .select("+carrierCostCents +platformFeeCents")
-    .populate("businessId", "name stripeAccountId stripeAccountActive")
+    .populate("businessId", "name phone stripeAccountId stripeAccountActive address")
     .populate("buyerId", "email name")
     .lean<
       IOrder & {
         _id: { toString(): string };
-        businessId?: { name: string; stripeAccountId?: string; stripeAccountActive?: boolean };
+        businessId?: {
+          name: string;
+          phone?: string;
+          stripeAccountId?: string;
+          stripeAccountActive?: boolean;
+          address?: { street?: string; city?: string; state?: string; zip?: string };
+        };
         buyerId?: { email?: string; name?: string };
       }
     >();

@@ -21,7 +21,18 @@ export function errorResponse(err: unknown): NextResponse {
         { error: "You've reached your catalog limit. Add an item pack to list more." },
         { status: 403 },
       );
+    case "OUT_OF_STOCK":
+      return NextResponse.json(
+        { error: "An item in your cart is out of stock. Please adjust quantities and try again." },
+        { status: 409 },
+      );
+    case "EMPTY_CART":
+      return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
     case "STRIPE_NOT_CONFIGURED":
+      return NextResponse.json(
+        { error: "Payments aren't configured yet. Please try again later." },
+        { status: 501 },
+      );
     case "BLOB_NOT_CONFIGURED":
       return NextResponse.json({ error: "This feature isn't configured yet." }, { status: 501 });
     case "BLOB_STORE_MISSING":

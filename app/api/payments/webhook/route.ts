@@ -79,6 +79,10 @@ export async function POST(request: Request) {
     const transferGroup = orderIds[0] ? `grp_${orderIds[0]}` : undefined;
 
     for (const orderId of orderIds) {
+      // Isolate each sub-order: a failure on one must not abort the batch (the
+      // idempotency record is already written, so an aborted batch would never
+      // be reprocessed on Stripe's retry). Failures are logged for reconciliation.
+      try {
       const data = await getOrderForFulfillment(orderId);
       if (!data || data.order.status !== "pending") continue;
       const { order, items } = data;
@@ -106,12 +110,17 @@ export async function POST(request: Request) {
       await decrementInventoryForOrder(orderId);
 
       const emailItems: OrderEmailItem[] = items.map((it) => {
-        const snap = (it.productSnapshot ?? {}) as { name?: string; weightOz?: number };
+        const snap = (it.productSnapshot ?? {}) as {
+          name?: string;
+          weightOz?: number;
+          dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
+        };
         return {
           name: snap.name ?? "Item",
           quantity: it.quantity,
           unitPriceCents: it.unitPriceCents,
           weightOz: snap.weightOz,
+          dimensions: snap.dimensions,
         };
       });
       const businessName = order.businessId?.name ?? "the shop";
@@ -137,12 +146,18 @@ export async function POST(request: Request) {
           ...packAndShipHandoffEmail({
             orderId,
             businessName,
+            shipFrom: order.businessId?.address
+              ? { ...order.businessId.address, phone: order.businessId.phone }
+              : undefined,
             shippingAddress: order.shippingAddress ?? {},
             items: emailItems,
             carrier: order.carrier,
             service: order.service,
           }),
         });
+      }
+      } catch (err) {
+        console.error(`Webhook: finalizing order ${orderId} failed (needs reconciliation):`, err);
       }
     }
   }

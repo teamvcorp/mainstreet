@@ -115,33 +115,46 @@ export async function computeCartShipping(
 
   const out: BusinessShipping[] = [];
   for (const [businessId, bizLines] of byBiz) {
-    const biz = await Business.findById(businessId)
-      .select("name address shipsOnline acceptsLocalPickup")
-      .lean<{ name: string; address?: { zip?: string }; shipsOnline?: boolean; acceptsLocalPickup?: boolean }>();
-    if (!biz) continue;
+    try {
+      const biz = await Business.findById(businessId)
+        .select("name address shipsOnline acceptsLocalPickup")
+        .lean<{ name: string; address?: { zip?: string }; shipsOnline?: boolean; acceptsLocalPickup?: boolean }>();
+      if (!biz) continue;
 
-    let options: ShipOption[] = [];
-    const fromZip = biz.address?.zip;
-    if (biz.shipsOnline && fromZip) {
-      const parcel = await buildParcel(businessId, bizLines);
-      const carrierRates = await getCarrierRates(fromZip, to, parcel);
-      options = pickBest(
-        carrierRates.map((r) => ({
-          carrier: r.carrier,
-          service: r.service,
-          consumerCents: Math.round(r.carrierCents * factor),
-          deliveryDays: r.deliveryDays,
-        })),
-      );
+      let options: ShipOption[] = [];
+      const fromZip = biz.address?.zip;
+      if (biz.shipsOnline && fromZip) {
+        const parcel = await buildParcel(businessId, bizLines);
+        const carrierRates = await getCarrierRates(fromZip, to, parcel);
+        options = pickBest(
+          carrierRates.map((r) => ({
+            carrier: r.carrier,
+            service: r.service,
+            consumerCents: Math.round(r.carrierCents * factor),
+            deliveryDays: r.deliveryDays,
+          })),
+        );
+      }
+
+      out.push({
+        businessId,
+        businessName: biz.name,
+        shipsOnline: !!biz.shipsOnline,
+        pickupAvailable: !!biz.acceptsLocalPickup,
+        options,
+      });
+    } catch (err) {
+      // One shop failing shouldn't break the whole cart's rates. Surface a
+      // pickup-only fallback for it so checkout can still proceed.
+      console.error(`computeCartShipping: business ${businessId} failed —`, err);
+      out.push({
+        businessId,
+        businessName: "This shop",
+        shipsOnline: false,
+        pickupAvailable: true,
+        options: [],
+      });
     }
-
-    out.push({
-      businessId,
-      businessName: biz.name,
-      shipsOnline: !!biz.shipsOnline,
-      pickupAvailable: !!biz.acceptsLocalPickup,
-      options,
-    });
   }
   return out;
 }

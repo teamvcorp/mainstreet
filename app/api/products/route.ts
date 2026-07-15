@@ -35,6 +35,14 @@ export async function POST(request: Request) {
     );
 
     const product = await Product.create({ ...parsed.data, businessId: biz._id, slug });
+
+    // First product → turn on online shipping by default (shipping is core to the
+    // platform). Only on the first item so a seller who later disables it isn't
+    // overridden on every subsequent add.
+    if (count === 0) {
+      await Business.updateOne({ _id: biz._id }, { $set: { shipsOnline: true } });
+    }
+
     return NextResponse.json({ product: toProductDTO(product.toObject()) }, { status: 201 });
   } catch (err) {
     return errorResponse(err);

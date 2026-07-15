@@ -31,6 +31,9 @@ export interface Parcel {
   heightIn?: number;
 }
 
+/** We only ship UPS and FedEx (no USPS). Applied to live rates + the estimate. */
+export const SUPPORTED_CARRIERS = ["UPS", "FedEx"];
+
 export function isEasyPostConfigured(): boolean {
   return !!process.env.EASYPOST_API_KEY;
 }
@@ -46,12 +49,21 @@ function getClient(): InstanceType<typeof EasyPostClient> | null {
 function estimateRates(parcel: Parcel): CarrierRate[] {
   const lbs = Math.max(1, Math.ceil(parcel.weightOz / 16));
   const base = 500; // $5.00 handling/base
-  const ground = base + lbs * 80; // +$0.80/lb
-  const priority = base + lbs * 140; // +$1.40/lb
+  const ground = base + lbs * 90; // +$0.90/lb
+  const expedited = base + lbs * 160; // +$1.60/lb
   return [
-    { carrier: "USPS", service: "GroundAdvantage", carrierCents: ground, deliveryDays: 4, estimated: true },
-    { carrier: "USPS", service: "Priority", carrierCents: priority, deliveryDays: 2, estimated: true },
+    { carrier: "UPS", service: "Ground", carrierCents: ground, deliveryDays: 4, estimated: true },
+    { carrier: "FedEx", service: "2Day", carrierCents: expedited, deliveryDays: 2, estimated: true },
   ];
+}
+
+const RATE_TIMEOUT_MS = 12000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("EASYPOST_TIMEOUT")), ms)),
+  ]);
 }
 
 export async function getCarrierRates(
@@ -62,27 +74,33 @@ export async function getCarrierRates(
   const ep = getClient();
   if (!ep) return estimateRates(parcel);
 
+  // Basic input guard — without a destination zip EasyPost can't rate; estimate instead.
+  if (!to.zip || !fromZip) return estimateRates(parcel);
+
   try {
-    const shipment = await ep.Shipment.create({
-      to_address: {
-        name: to.name,
-        street1: to.street1 || "",
-        city: to.city,
-        state: to.state,
-        zip: to.zip,
-        country: "US",
-      },
-      from_address: { zip: fromZip, country: "US" },
-      parcel: {
-        weight: Math.max(1, parcel.weightOz), // EasyPost weight is in ounces
-        length: parcel.lengthIn,
-        width: parcel.widthIn,
-        height: parcel.heightIn,
-      },
-    });
+    const shipment = await withTimeout(
+      ep.Shipment.create({
+        to_address: {
+          name: to.name,
+          street1: to.street1 || "",
+          city: to.city,
+          state: to.state,
+          zip: to.zip,
+          country: "US",
+        },
+        from_address: { zip: fromZip, country: "US" },
+        parcel: {
+          weight: Math.max(1, parcel.weightOz), // EasyPost weight is in ounces
+          length: parcel.lengthIn,
+          width: parcel.widthIn,
+          height: parcel.heightIn,
+        },
+      }),
+      RATE_TIMEOUT_MS,
+    );
 
     const rates = (shipment.rates ?? [])
-      .filter((r) => ["USPS", "UPS", "FedEx"].includes(r.carrier ?? ""))
+      .filter((r) => SUPPORTED_CARRIERS.includes(r.carrier ?? ""))
       .map((r) => ({
         carrier: r.carrier as string,
         service: r.service as string,
