@@ -7,6 +7,7 @@ import { BusinessCard } from "@/components/business/BusinessCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { EventListItem } from "@/components/events/EventListItem";
 import { SearchEmptyState } from "@/components/search/SearchEmptyState";
+import { AmazonLink } from "@/components/shop/AmazonLink";
 import { cn } from "@/lib/utils";
 import { T } from "@/components/i18n/T";
 import { LocalizedSearchInput } from "@/components/i18n/LocalizedSearchInput";
@@ -164,6 +165,19 @@ export default async function SearchPage({
           </section>
         )}
       </div>
+
+      {/* Quiet Amazon fallback — carries the search term + associate tag even when
+          we DID find local results (never loud; Addendum A). */}
+      <p className="mt-10 border-t border-border pt-6 text-sm text-muted-foreground">
+        <T k="search.amazonHint" />{" "}
+        <AmazonLink
+          href={amazonSearchUrl(query)}
+          query={query}
+          className="text-muted-foreground/80 underline underline-offset-2 hover:text-muted-foreground"
+        >
+          <T k="search.seeOnAmazon" /> “{query}” <T k="search.onAmazon" />
+        </AmazonLink>
+      </p>
     </div>
   );
 }
