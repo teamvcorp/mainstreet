@@ -57,9 +57,40 @@ function OrderRow({ order }: { order: AdminOrderRow }) {
   const [tracking, setTracking] = useState(order.trackingNumber ?? "");
   const [carrier, setCarrier] = useState(order.carrier ?? "");
   const [labelUrl, setLabelUrl] = useState(order.labelUrl ?? "");
+  const [finalShip, setFinalShip] = useState((order.shippingCents / 100).toFixed(2));
+  const [reconMsg, setReconMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const a = order.shippingAddress;
+
+  async function reconcile() {
+    setError(null);
+    setReconMsg(null);
+    const cents = Math.round((parseFloat(finalShip) || 0) * 100);
+    setBusy(true);
+    const res = await fetch(`/api/admin/orders/${order.id}/shipping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finalShippingCents: cents }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error ?? "Reconcile failed.");
+      return;
+    }
+    const d = (data.delta ?? 0) / 100;
+    setReconMsg(
+      data.status === "charged"
+        ? `Charged buyer $${d.toFixed(2)} extra.`
+        : data.status === "refunded"
+          ? `Refunded buyer $${Math.abs(d).toFixed(2)}.`
+          : data.status === "buyer_action"
+            ? `Card charge failed — ${data.emailed ? "emailed the buyer a pay link." : "buyer pay link created."}`
+            : "No change (amounts matched).",
+    );
+    router.refresh();
+  }
 
   async function uploadLabel(file: File) {
     setError(null);
@@ -154,6 +185,31 @@ function OrderRow({ order }: { order: AdminOrderRow }) {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Shipping reconciliation — enter the final buyer shipping; charge/refund the difference */}
+      {order.fulfillmentType === "ship" && (
+        <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+          <Label htmlFor={`fs-${order.id}`}>Final shipping (buyer pays)</Label>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">$</span>
+            <Input
+              id={`fs-${order.id}`}
+              inputMode="decimal"
+              value={finalShip}
+              onChange={(e) => setFinalShip(e.target.value)}
+              className="w-28"
+            />
+            <Button size="sm" variant="outline" disabled={busy} onClick={reconcile}>
+              Reconcile
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Charged at checkout: {formatCurrency(order.shippingCents)}
+            {order.shippingReconciled ? " · reconciled ✓" : ""}
+          </p>
+          {reconMsg && <p className="mt-2 text-sm text-success">{reconMsg}</p>}
         </div>
       )}
 

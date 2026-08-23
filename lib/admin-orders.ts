@@ -16,6 +16,7 @@ export interface AdminOrderRow {
   service?: string;
   trackingNumber?: string;
   labelUrl?: string;
+  shippingReconciled?: boolean;
   business?: { name: string; slug: string } | null;
   buyerEmail?: string;
   shippingAddress?: IOrder["shippingAddress"];
@@ -55,6 +56,7 @@ export async function getOrdersForAdmin(): Promise<AdminOrderRow[]> {
     service: o.service,
     trackingNumber: o.trackingNumber,
     labelUrl: o.labelUrl,
+    shippingReconciled: o.shippingReconciled,
     business: o.businessId ? { name: o.businessId.name, slug: o.businessId.slug } : null,
     buyerEmail: o.buyerId?.email,
     shippingAddress: o.shippingAddress,

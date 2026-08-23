@@ -46,11 +46,19 @@ function getClient(): InstanceType<typeof EasyPostClient> | null {
   return client;
 }
 
+/** Read an integer-cents env var, falling back to a default when unset/invalid. */
+function envCents(name: string, fallback: number): number {
+  const n = parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function estimateRates(parcel: Parcel): CarrierRate[] {
   const lbs = Math.max(1, Math.ceil(parcel.weightOz / 16));
-  const base = 500; // $5.00 handling/base
-  const ground = base + lbs * 90; // +$0.90/lb
-  const expedited = base + lbs * 160; // +$1.60/lb
+  // Tunable via env (defaults preserve prior behavior). Consumer price is then
+  // this carrier estimate × SHIPPING_MARKUP (see lib/shipping.ts markupFactor).
+  const base = envCents("SHIP_EST_BASE_CENTS", 500); // flat handling/base
+  const ground = base + lbs * envCents("SHIP_EST_GROUND_PER_LB_CENTS", 90); // UPS Ground /lb
+  const expedited = base + lbs * envCents("SHIP_EST_EXPEDITED_PER_LB_CENTS", 160); // FedEx 2Day /lb
   return [
     { carrier: "UPS", service: "Ground", carrierCents: ground, deliveryDays: 4, estimated: true },
     { carrier: "FedEx", service: "2Day", carrierCents: expedited, deliveryDays: 2, estimated: true },

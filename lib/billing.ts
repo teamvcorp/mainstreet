@@ -14,6 +14,57 @@ export function itemLimitForBlocks(blocks: number): number {
   return BASE_ITEM_LIMIT + ITEMS_PER_PACK * Math.max(0, blocks);
 }
 
+/**
+ * Find-or-create a recurring Price by lookup_key (creates the Product inline the
+ * first time). Lets embedded subscriptions work without pre-provisioning Price IDs
+ * in the dashboard — `subscriptions.create` needs a Price (no inline price_data).
+ */
+export async function getOrCreatePriceId(opts: {
+  lookupKey: string;
+  unitAmount: number;
+  interval: "year" | "month";
+  productName: string;
+}): Promise<string> {
+  const stripe = getStripe();
+  const found = await stripe.prices.list({ lookup_keys: [opts.lookupKey], active: true, limit: 1 });
+  if (found.data[0]) return found.data[0].id;
+  const price = await stripe.prices.create({
+    currency: "usd",
+    unit_amount: opts.unitAmount,
+    recurring: { interval: opts.interval },
+    lookup_key: opts.lookupKey,
+    product_data: { name: opts.productName },
+  });
+  return price.id;
+}
+
+/**
+ * Create a subscription that must be paid immediately via the embedded Payment
+ * Element. `default_incomplete` finalizes the first invoice and attaches a
+ * PaymentIntent whose client secret the browser confirms; the subscription flips
+ * to active on payment (webhook customer.subscription.updated → applySubscription).
+ * The paid card becomes the subscription's default payment method.
+ */
+export async function createEmbeddedSubscription(opts: {
+  customer: string;
+  priceId: string;
+  quantity?: number;
+  metadata: Record<string, string>;
+}): Promise<{ subscriptionId: string; clientSecret: string }> {
+  const sub = await getStripe().subscriptions.create({
+    customer: opts.customer,
+    items: [{ price: opts.priceId, ...(opts.quantity ? { quantity: opts.quantity } : {}) }],
+    payment_behavior: "default_incomplete",
+    payment_settings: { save_default_payment_method: "on_subscription" },
+    expand: ["latest_invoice.confirmation_secret"],
+    metadata: opts.metadata,
+  });
+  const invoice = sub.latest_invoice as Stripe.Invoice | null;
+  const clientSecret = invoice?.confirmation_secret?.client_secret;
+  if (!clientSecret) throw new Error("STRIPE_NO_CLIENT_SECRET");
+  return { subscriptionId: sub.id, clientSecret };
+}
+
 /** Reuse (or lazily create) the Stripe Customer for a user. */
 export async function getOrCreateCustomerId(user: {
   id: string;

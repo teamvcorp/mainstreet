@@ -179,7 +179,11 @@ const es = {
     getRates: "Ver opciones de envío",
     updateRates: "Actualizar opciones de envío",
     pay: "Pagar",
-    secure: "Pago seguro con Stripe. Ingresarás los datos de tu tarjeta en la siguiente pantalla.",
+    continueToPayment: "Continuar al pago",
+    changeShipping: "Cambiar envío",
+    secure: "Pago seguro con Stripe. Los datos de tu tarjeta nunca salen de esta página.",
+    estimateNote:
+      "El envío mostrado es una estimación. Tu tarjeta se guarda de forma segura y el envío final se ajusta (cargo o reembolso) después de empacar tu pedido.",
     emptyTitle: "Tu carrito está vacío.",
   },
   orders: {

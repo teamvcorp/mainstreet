@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Truck, MapPin } from "lucide-react";
-import { useCart, cartSubtotalCents, groupByBusiness } from "@/lib/cart";
+import { useCart, cartSubtotalCents } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useT } from "@/components/i18n/I18nProvider";
+import { PaymentForm } from "@/components/checkout/PaymentForm";
 
 interface ShipOption {
   id: string;
@@ -45,8 +46,12 @@ export default function CheckoutPage() {
   const [loadingRates, setLoadingRates] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Step 2 — embedded Payment Element. `orderIds` are the pending orders backing
+  // the current intent; if the buyer edits shipping we abandon them and recreate.
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const clearCart = useCart((s) => s.clear);
 
-  const groups = useMemo(() => groupByBusiness(items), [items]);
   const subtotal = cartSubtotalCents(items);
   const shippingTotal = Object.values(selections).reduce((n, s) => n + s.amountCents, 0);
 
@@ -64,6 +69,7 @@ export default function CheckoutPage() {
 
   async function getRates() {
     setError(null);
+    setClientSecret(null); // address/rate change invalidates any created intent
     setLoadingRates(true);
     try {
       const res = await fetch("/api/shipping/rates", {
@@ -99,14 +105,18 @@ export default function CheckoutPage() {
     }
   }
 
+  // Any change to shipping invalidates a created intent — force a re-continue.
   function chooseShip(b: BusinessShipping, o: ShipOption) {
+    setClientSecret(null);
     setSelections((s) => ({ ...s, [b.businessId]: { mode: "ship", carrier: o.carrier, service: o.service, amountCents: o.amountCents } }));
   }
   function choosePickup(b: BusinessShipping) {
+    setClientSecret(null);
     setSelections((s) => ({ ...s, [b.businessId]: { mode: "pickup", amountCents: 0 } }));
   }
 
-  async function pay() {
+  /** Create/refresh the PaymentIntent and reveal the embedded card field. */
+  async function continueToPayment() {
     setError(null);
     setPaying(true);
     try {
@@ -119,19 +129,27 @@ export default function CheckoutPage() {
           selections: Object.fromEntries(
             Object.entries(selections).map(([k, v]) => [k, { mode: v.mode, carrier: v.carrier, service: v.service }]),
           ),
+          // discard the prior attempt's pending orders, if any
+          abandonOrderIds: orderIds.length ? orderIds : undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) {
+      if (!res.ok || !data.clientSecret) {
         setError(data.error ?? "Could not start checkout.");
-        setPaying(false);
         return;
       }
-      window.location.href = data.url; // → Stripe hosted Checkout
+      setOrderIds(data.orderIds ?? []);
+      setClientSecret(data.clientSecret);
     } catch {
       setError("Something went wrong starting checkout.");
+    } finally {
       setPaying(false);
     }
+  }
+
+  function onPaid() {
+    clearCart();
+    router.push("/orders/success");
   }
 
   return (
@@ -230,11 +248,31 @@ export default function CheckoutPage() {
           <span>{formatCurrency(subtotal + shippingTotal)}</span>
         </div>
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button size="lg" className="mt-4 w-full" disabled={!shipping || paying} onClick={pay}>
-          {paying ? <Loader2 className="size-4 animate-spin" /> : null}
-          {t("checkout.pay")} {formatCurrency(subtotal + shippingTotal)}
-        </Button>
+
+        {!clientSecret ? (
+          <Button size="lg" className="mt-4 w-full" disabled={!shipping || paying} onClick={continueToPayment}>
+            {paying ? <Loader2 className="size-4 animate-spin" /> : null}
+            {t("checkout.continueToPayment")}
+          </Button>
+        ) : (
+          <div className="mt-4">
+            <PaymentForm
+              clientSecret={clientSecret}
+              returnPath="/orders/success"
+              submitLabel={`${t("checkout.pay")} ${formatCurrency(subtotal + shippingTotal)}`}
+              onSuccess={onPaid}
+            />
+            <button
+              type="button"
+              onClick={() => setClientSecret(null)}
+              className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+            >
+              {t("checkout.changeShipping")}
+            </button>
+          </div>
+        )}
         <p className="mt-2 text-center text-xs text-muted-foreground">{t("checkout.secure")}</p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">{t("checkout.estimateNote")}</p>
       </section>
     </div>
   );

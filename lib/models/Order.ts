@@ -37,6 +37,13 @@ export interface IOrder {
   taxCents: number;
   totalCents: number;
   shippingAddress?: OrderShippingAddress;
+  // Saved payment method (off-session) for post-fulfillment shipping adjustments.
+  stripeCustomerId?: string;
+  stripePaymentMethodId?: string;
+  /** Set once the final shipping has been reconciled (charged/refunded) or was equal. */
+  shippingReconciled?: boolean;
+  /** When an off-session adjustment charge failed: the buyer-pay Checkout session id. */
+  shippingAdjustmentSessionId?: string;
   easypostRateId?: string;
   easypostShipmentId?: string;
   carrier?: string;
@@ -79,6 +86,10 @@ const OrderSchema = new Schema<IOrder>(
       zip: String,
       phone: String,
     },
+    stripeCustomerId: String,
+    stripePaymentMethodId: String,
+    shippingReconciled: { type: Boolean, default: false },
+    shippingAdjustmentSessionId: String,
     easypostRateId: String,
     easypostShipmentId: String,
     carrier: String,

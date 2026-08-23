@@ -14,17 +14,26 @@ lazy, server-only; `isStripeConfigured()`).
 - `GET /account` — JSON status for the dashboard (connected/active/charges/payouts/configured).
 
 ## Payments model (built in Phase 4/6)
-- Product sale: PaymentIntent on the **platform** account with
-  `transfer_data.destination = seller` and transfer amount = **subtotal only**
-  (shipping stays on platform). We take **no** cut of product sales.
+- Product sale: a **PaymentIntent on the platform account** (embedded Payment Element,
+  no redirect) charges the full cart. The webhook then creates **separate transfers**
+  per seller (`transfer_group` + `source_transaction = pi.latest_charge`), each =
+  **subtotal only** (shipping stays on platform). Separate charges + transfers — NOT
+  `transfer_data.destination` — so one cart can pay several shops. We take **no** cut of
+  product sales.
 - Membership: **$150/yr** subscription on the platform account; item packs
-  **$5/mo per 50** as a subscription add-on item.
+  **$5/mo per 50** as a separate monthly subscription. Both use the embedded Payment
+  Element (`default_incomplete` → confirm client-side); Prices are auto-created by
+  `lookup_key` (see `docs/memberships.md`).
 - Payouts: handled by Stripe's **hosted Express dashboard** — no custom payout UI.
+- **API version** is pinned to the SDK's bundled version (`Stripe.API_VERSION` in
+  `lib/stripe.ts`) so runtime responses match the TypeScript types (e.g.
+  `invoice.confirmation_secret`, which replaced the old `latest_invoice.payment_intent`).
 
 ## Env
 `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`STRIPE_CONNECT_CLIENT_ID`, `STRIPE_PRICE_SELLER_ANNUAL`, `STRIPE_PRICE_EXTRA_ITEMS_MONTHLY`.
-Without `STRIPE_SECRET_KEY`, connect routes return 501 and the UI shows a "not configured" notice.
+`STRIPE_CONNECT_CLIENT_ID`. (Membership Price IDs are **auto-created by `lookup_key`** at
+runtime — no `STRIPE_PRICE_*` env vars needed.) Without `STRIPE_SECRET_KEY`, connect routes
+return 501 and the UI shows a "not configured" notice.
 
 ## Test (Stripe test mode)
 1. Set `STRIPE_SECRET_KEY=sk_test_…` + `NEXT_PUBLIC_APP_URL`.

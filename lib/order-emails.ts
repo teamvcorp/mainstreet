@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/lib/utils";
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -23,6 +25,25 @@ function dimsLine(d?: { lengthIn?: number; widthIn?: number; heightIn?: number }
   if (!d || (!d.lengthIn && !d.widthIn && !d.heightIn)) return "no dimensions on file";
   const n = (v?: number) => (typeof v === "number" ? v : "?");
   return `${n(d.lengthIn)} × ${n(d.widthIn)} × ${n(d.heightIn)} in`;
+}
+
+/** Buyer "additional shipping due" — when the off-session adjustment charge failed. */
+export function shippingDueEmail(input: { orderId: string; amountCents: number; payUrl: string }) {
+  const text = [
+    `Almost there — a quick shipping update on your MainStreet order.`,
+    ``,
+    `Your final shipping came out ${formatCurrency(input.amountCents)} more than the checkout`,
+    `estimate. Please complete this small balance so we can ship your order:`,
+    ``,
+    input.payUrl,
+    ``,
+    `Order ref: ${input.orderId}`,
+  ].join("\n");
+  return {
+    subject: `Action needed: shipping balance for your MainStreet order`,
+    text,
+    html: wrap(text),
+  };
 }
 
 /**

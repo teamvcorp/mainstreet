@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { getMyBusiness } from "@/lib/seller";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
-import { getOrCreateCustomerId, MEMBERSHIP_ANNUAL_CENTS } from "@/lib/billing";
+import { isStripeConfigured } from "@/lib/stripe";
+import {
+  createEmbeddedSubscription,
+  getOrCreateCustomerId,
+  getOrCreatePriceId,
+  MEMBERSHIP_ANNUAL_CENTS,
+} from "@/lib/billing";
 import { errorResponse } from "@/lib/api";
 
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-/** Start the $150/yr seller membership via a Stripe subscription Checkout. */
+/**
+ * Start the $150/yr seller membership as an embedded subscription. Returns a
+ * client secret the browser confirms with the Payment Element (no redirect); the
+ * subscription activates on payment via the webhook.
+ */
 export async function POST() {
   try {
     const user = await requireRole(["seller", "admin"]);
@@ -17,28 +24,20 @@ export async function POST() {
 
     const businessId = biz._id.toString();
     const customer = await getOrCreateCustomerId(user);
-
-    const session = await getStripe().checkout.sessions.create({
-      mode: "subscription",
-      customer,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "usd",
-            unit_amount: MEMBERSHIP_ANNUAL_CENTS,
-            recurring: { interval: "year" },
-            product_data: { name: "MainStreet Seller Membership (annual)" },
-          },
-        },
-      ],
-      metadata: { type: "membership", businessId },
-      subscription_data: { metadata: { type: "membership", businessId } },
-      success_url: `${BASE}/seller/membership?done=1`,
-      cancel_url: `${BASE}/seller/membership`,
+    const priceId = await getOrCreatePriceId({
+      lookupKey: "ms_seller_membership_annual",
+      unitAmount: MEMBERSHIP_ANNUAL_CENTS,
+      interval: "year",
+      productName: "MainStreet Seller Membership (annual)",
     });
 
-    return NextResponse.json({ url: session.url });
+    const { clientSecret } = await createEmbeddedSubscription({
+      customer,
+      priceId,
+      metadata: { type: "membership", businessId },
+    });
+
+    return NextResponse.json({ clientSecret });
   } catch (err) {
     return errorResponse(err);
   }

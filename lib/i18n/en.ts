@@ -178,7 +178,11 @@ const en = {
     getRates: "Get shipping options",
     updateRates: "Update shipping options",
     pay: "Pay",
-    secure: "Secure checkout by Stripe. You'll enter card details on the next screen.",
+    continueToPayment: "Continue to payment",
+    changeShipping: "Change shipping",
+    secure: "Secure checkout by Stripe. Your card details never leave this page.",
+    estimateNote:
+      "Shipping shown is an estimate. Your card is saved securely and the final shipping is adjusted (charged or refunded) after your order is packed.",
     emptyTitle: "Your cart is empty.",
   },
   orders: {

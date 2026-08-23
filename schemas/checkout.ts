@@ -33,5 +33,7 @@ export const createIntentSchema = z.object({
   items: z.array(cartLineSchema).min(1).max(100),
   // keyed by businessId
   selections: z.record(z.string(), shippingSelectionSchema),
+  // pending orders from a prior attempt to discard (e.g. buyer changed shipping)
+  abandonOrderIds: z.array(objectId).max(50).optional(),
 });
 export type CreateIntentInput = z.infer<typeof createIntentSchema>;

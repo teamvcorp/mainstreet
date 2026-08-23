@@ -142,6 +142,21 @@ export async function createPendingOrdersForCheckout(input: {
   return { orderIds, lineItems, grandTotalCents: grand };
 }
 
+/**
+ * Discard prior PENDING orders (+ their items) for a buyer — used when a buyer
+ * edits shipping and we recreate the checkout, so no orphan pending orders linger.
+ * Scoped to buyer + pending so a paid order can never be deleted.
+ */
+export async function discardPendingOrders(buyerId: string, orderIds: string[]) {
+  if (!orderIds.length) return;
+  await connectToDatabase();
+  const rows = await Order.find({ _id: { $in: orderIds }, buyerId, status: "pending" }).select("_id");
+  const ids = rows.map((r) => r._id);
+  if (!ids.length) return;
+  await OrderItem.deleteMany({ orderId: { $in: ids } });
+  await Order.deleteMany({ _id: { $in: ids } });
+}
+
 /** Order + business + items for webhook finalization (includes confidential fields). */
 export async function getOrderForFulfillment(orderId: string) {
   await connectToDatabase();
@@ -167,11 +182,23 @@ export async function getOrderForFulfillment(orderId: string) {
   return { order, items };
 }
 
-export async function markOrderPaid(orderId: string, piId: string, transferId?: string) {
+export async function markOrderPaid(
+  orderId: string,
+  piId: string,
+  extra?: { transferId?: string; customerId?: string; paymentMethodId?: string },
+) {
   await connectToDatabase();
   await Order.updateOne(
     { _id: orderId },
-    { $set: { status: "paid", stripePaymentIntentId: piId, ...(transferId ? { stripeTransferId: transferId } : {}) } },
+    {
+      $set: {
+        status: "paid",
+        stripePaymentIntentId: piId,
+        ...(extra?.transferId ? { stripeTransferId: extra.transferId } : {}),
+        ...(extra?.customerId ? { stripeCustomerId: extra.customerId } : {}),
+        ...(extra?.paymentMethodId ? { stripePaymentMethodId: extra.paymentMethodId } : {}),
+      },
+    },
   );
 }
 
