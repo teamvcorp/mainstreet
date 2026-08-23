@@ -14,6 +14,7 @@ export type ShipAddressInput = z.infer<typeof shipAddressSchema>;
 export const cartLineSchema = z.object({
   productId: objectId,
   businessId: objectId,
+  variantId: objectId.optional(),
   quantity: z.number().int().min(1).max(99),
 });
 

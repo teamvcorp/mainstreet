@@ -9,6 +9,7 @@ function wrap(text: string): string {
 
 export interface OrderEmailItem {
   name: string;
+  variantLabel?: string; // e.g. "M / Blue"
   quantity: number;
   unitPriceCents: number;
   weightOz?: number;
@@ -89,7 +90,7 @@ export function packAndShipHandoffEmail(input: {
     `PACKAGE CONTENTS`,
     ...input.items.map(
       (i) =>
-        `  ${i.quantity} × ${i.name}\n      weight: ${weightLine(i.weightOz)} ea\n      dimensions: ${dimsLine(i.dimensions)}`,
+        `  ${i.quantity} × ${i.name}${i.variantLabel ? ` — ${i.variantLabel}` : ""}\n      weight: ${weightLine(i.weightOz)} ea\n      dimensions: ${dimsLine(i.dimensions)}`,
     ),
     ``,
     `Estimated total weight: ${totalOz ? `${(totalOz / OZ_PER_LB).toFixed(2)} lb (${totalOz} oz)` : "n/a"}`,

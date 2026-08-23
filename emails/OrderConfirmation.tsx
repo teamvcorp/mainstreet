@@ -29,6 +29,9 @@ export function OrderConfirmationEmail(p: OrderConfirmationProps) {
         <Row key={i} style={{ marginBottom: 6 }}>
           <Column style={{ color: emailStyles.INK, fontSize: 14 }}>
             {it.quantity} × {it.name}
+            {it.variantLabel ? (
+              <span style={{ color: emailStyles.MUTED }}> — {it.variantLabel}</span>
+            ) : null}
           </Column>
           <Column align="right" style={{ color: emailStyles.INK, fontSize: 14 }}>
             {formatCurrency(it.unitPriceCents * it.quantity)}

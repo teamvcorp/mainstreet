@@ -77,7 +77,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toAddress: address,
-          items: items.map((i) => ({ productId: i.productId, businessId: i.businessId, quantity: i.quantity })),
+          items: items.map((i) => ({ productId: i.productId, businessId: i.businessId, variantId: i.variantId, quantity: i.quantity })),
         }),
       });
       const data = await res.json();
@@ -125,7 +125,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toAddress: address,
-          items: items.map((i) => ({ productId: i.productId, businessId: i.businessId, quantity: i.quantity })),
+          items: items.map((i) => ({ productId: i.productId, businessId: i.businessId, variantId: i.variantId, quantity: i.quantity })),
           selections: Object.fromEntries(
             Object.entries(selections).map(([k, v]) => [k, { mode: v.mode, carrier: v.carrier, service: v.service }]),
           ),

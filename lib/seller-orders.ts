@@ -28,7 +28,9 @@ export async function getSellerOrder(orderId: string, businessId: string) {
       id: it._id.toString(),
       quantity: it.quantity,
       unitPriceCents: it.unitPriceCents,
-      snapshot: it.productSnapshot as { name?: string; images?: string[] } | undefined,
+      snapshot: it.productSnapshot as
+        | { name?: string; images?: string[]; variantLabel?: string }
+        | undefined,
     })),
   };
 }

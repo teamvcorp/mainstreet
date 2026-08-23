@@ -29,6 +29,17 @@ function businessView(b: Lean<IBusiness> & { townId?: PopTown }) {
 }
 
 function productView(p: Lean<IProduct>) {
+  // Only expose ACTIVE variants to buyers (an inactive combo doesn't exist for sale).
+  const variants = (p.variants ?? [])
+    .filter((v) => v.isActive)
+    .map((v) => ({
+      id: v._id.toString(),
+      options: v.options.map((o) => ({ name: o.name, value: o.value })),
+      priceCents: v.priceCents,
+      inventoryQty: v.inventoryQty,
+      trackInventory: v.trackInventory,
+      weightOz: v.weightOz,
+    }));
   return {
     id: p._id.toString(),
     slug: p.slug,
@@ -42,6 +53,8 @@ function productView(p: Lean<IProduct>) {
     images: p.images ?? [],
     category: p.category,
     tags: p.tags ?? [],
+    optionTypes: (p.optionTypes ?? []).map((t) => ({ name: t.name, values: t.values })),
+    variants,
   };
 }
 

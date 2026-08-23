@@ -69,6 +69,17 @@ export function toProductDTO(p: IProduct & WithId) {
     images: p.images,
     category: p.category,
     tags: p.tags,
+    optionTypes: (p.optionTypes ?? []).map((t) => ({ name: t.name, values: t.values })),
+    variants: (p.variants ?? []).map((v) => ({
+      id: v._id.toString(),
+      options: v.options.map((o) => ({ name: o.name, value: o.value })),
+      priceCents: v.priceCents,
+      inventoryQty: v.inventoryQty,
+      trackInventory: v.trackInventory,
+      weightOz: v.weightOz,
+      sku: v.sku,
+      isActive: v.isActive,
+    })),
     isActive: p.isActive,
   };
 }

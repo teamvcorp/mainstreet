@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingCart, Package } from "lucide-react";
-import { useCart, cartSubtotalCents, groupByBusiness } from "@/lib/cart";
+import { useCart, cartSubtotalCents, groupByBusiness, lineKey } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/components/i18n/I18nProvider";
@@ -48,8 +48,10 @@ export default function CartPage() {
               </Link>
             </div>
             <ul className="divide-y divide-border">
-              {g.items.map((i) => (
-                <li key={i.productId} className="flex items-center gap-4 p-4">
+              {g.items.map((i) => {
+                const key = lineKey(i);
+                return (
+                <li key={key} className="flex items-center gap-4 p-4">
                   <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {i.imageUrl ? (
                       <Image src={i.imageUrl} alt="" fill sizes="64px" className="object-cover" />
@@ -63,23 +65,25 @@ export default function CartPage() {
                     <Link href={`/store/${g.businessSlug}/${i.slug}`} className="truncate font-medium hover:underline">
                       {i.name}
                     </Link>
+                    {i.variantLabel && <p className="text-xs text-muted-foreground">{i.variantLabel}</p>}
                     <p className="text-sm text-muted-foreground">{formatCurrency(i.priceCents)}</p>
                   </div>
                   <div className="flex items-center gap-1 rounded-lg border border-border">
-                    <button className="p-2 hover:bg-muted" onClick={() => setQty(i.productId, i.quantity - 1)} aria-label="Decrease">
+                    <button className="p-2 hover:bg-muted" onClick={() => setQty(key, i.quantity - 1)} aria-label="Decrease">
                       <Minus className="size-3.5" />
                     </button>
                     <span className="w-8 text-center text-sm">{i.quantity}</span>
-                    <button className="p-2 hover:bg-muted" onClick={() => setQty(i.productId, i.quantity + 1)} aria-label="Increase">
+                    <button className="p-2 hover:bg-muted" onClick={() => setQty(key, i.quantity + 1)} aria-label="Increase">
                       <Plus className="size-3.5" />
                     </button>
                   </div>
                   <div className="w-20 text-right font-medium">{formatCurrency(i.priceCents * i.quantity)}</div>
-                  <button className="p-2 text-muted-foreground hover:text-destructive" onClick={() => remove(i.productId)} aria-label="Remove">
+                  <button className="p-2 text-muted-foreground hover:text-destructive" onClick={() => remove(key)} aria-label="Remove">
                     <Trash2 className="size-4" />
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         ))}

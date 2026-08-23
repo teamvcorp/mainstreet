@@ -10,22 +10,33 @@ import { persist } from "zustand/middleware";
  */
 export interface CartItem {
   productId: string;
+  variantId?: string; // which product variant (if the product has options)
+  variantLabel?: string; // e.g. "M / Blue" — for display
+  options?: { name: string; value: string }[];
   businessId: string;
   businessName: string;
   businessSlug: string;
   name: string;
   slug: string;
-  priceCents: number;
+  priceCents: number; // the SELECTED variant's price when variantId is set
   quantity: number;
-  weightOz?: number;
+  weightOz?: number; // the selected variant's weight when set
   imageUrl?: string;
 }
+
+/**
+ * A cart line is identified by product + variant, so two variants of the same
+ * product (e.g. a Medium and a Large) are separate lines. No-variant products key
+ * by productId alone.
+ */
+export const lineKey = (i: Pick<CartItem, "productId" | "variantId">) =>
+  i.variantId ? `${i.productId}:${i.variantId}` : i.productId;
 
 interface CartState {
   items: CartItem[];
   add: (item: Omit<CartItem, "quantity">, qty?: number) => void;
-  remove: (productId: string) => void;
-  setQty: (productId: string, qty: number) => void;
+  remove: (key: string) => void;
+  setQty: (key: string, qty: number) => void;
   clear: () => void;
 }
 
@@ -35,21 +46,22 @@ export const useCart = create<CartState>()(
       items: [],
       add: (item, qty = 1) =>
         set((s) => {
-          const existing = s.items.find((i) => i.productId === item.productId);
+          const key = lineKey(item);
+          const existing = s.items.find((i) => lineKey(i) === key);
           if (existing) {
             return {
               items: s.items.map((i) =>
-                i.productId === item.productId ? { ...i, quantity: i.quantity + qty } : i,
+                lineKey(i) === key ? { ...i, quantity: i.quantity + qty } : i,
               ),
             };
           }
           return { items: [...s.items, { ...item, quantity: qty }] };
         }),
-      remove: (productId) => set((s) => ({ items: s.items.filter((i) => i.productId !== productId) })),
-      setQty: (productId, qty) =>
+      remove: (key) => set((s) => ({ items: s.items.filter((i) => lineKey(i) !== key) })),
+      setQty: (key, qty) =>
         set((s) => ({
           items: s.items.map((i) =>
-            i.productId === productId ? { ...i, quantity: Math.max(1, qty) } : i,
+            lineKey(i) === key ? { ...i, quantity: Math.max(1, qty) } : i,
           ),
         })),
       clear: () => set({ items: [] }),

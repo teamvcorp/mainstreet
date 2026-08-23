@@ -63,11 +63,13 @@ async function finalizeOrders(orderIds: string[], ctx: FinalizeCtx) {
       const emailItems: OrderEmailItem[] = items.map((it) => {
         const snap = (it.productSnapshot ?? {}) as {
           name?: string;
+          variantLabel?: string;
           weightOz?: number;
           dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
         };
         return {
           name: snap.name ?? "Item",
+          variantLabel: snap.variantLabel,
           quantity: it.quantity,
           unitPriceCents: it.unitPriceCents,
           weightOz: snap.weightOz,

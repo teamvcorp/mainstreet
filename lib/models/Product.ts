@@ -6,6 +6,29 @@ export interface ProductDimensions {
   heightIn?: number;
 }
 
+/** One author-defined option axis, e.g. { name: "Size", values: ["S","M","L"] }. */
+export interface IProductOptionType {
+  name: string;
+  values: string[];
+}
+
+/**
+ * A single sellable combination (e.g. Size=M, Color=Blue). Each variant carries its
+ * OWN price/stock/weight — when a product has variants these are authoritative and the
+ * product-level price/inventory/weight are only the defaults used for no-variant products.
+ * `_id` is the stable identity referenced by cart lines and order items.
+ */
+export interface IProductVariant {
+  _id: Types.ObjectId;
+  options: { name: string; value: string }[]; // one entry per optionType, order-preserving
+  priceCents: number;
+  inventoryQty: number;
+  trackInventory: boolean;
+  weightOz?: number; // falls back to product.weightOz when unset
+  sku?: string;
+  isActive: boolean; // deactivate a combination that doesn't exist
+}
+
 export interface IProduct {
   _id: Types.ObjectId;
   businessId: Types.ObjectId;
@@ -22,10 +45,28 @@ export interface IProduct {
   images: string[];
   category?: string;
   tags: string[];
+  optionTypes: IProductOptionType[];
+  variants: IProductVariant[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const VariantSchema = new Schema<IProductVariant>(
+  {
+    options: {
+      type: [{ _id: false, name: { type: String, required: true }, value: { type: String, required: true } }],
+      default: [],
+    },
+    priceCents: { type: Number, required: true, min: 0 },
+    inventoryQty: { type: Number, default: 0, min: 0 },
+    trackInventory: { type: Boolean, default: true },
+    weightOz: { type: Number, min: 0 },
+    sku: String,
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: true }, // subdoc _id is the stable identity used by cart/order references
+);
 
 const ProductSchema = new Schema<IProduct>(
   {
@@ -43,6 +84,11 @@ const ProductSchema = new Schema<IProduct>(
     images: { type: [String], default: [] },
     category: String,
     tags: { type: [String], default: [] },
+    optionTypes: {
+      type: [{ _id: false, name: { type: String, required: true }, values: { type: [String], default: [] } }],
+      default: [],
+    },
+    variants: { type: [VariantSchema], default: [] },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

@@ -59,6 +59,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{it.snapshot?.name ?? "Item"}</p>
+              {it.snapshot?.variantLabel && (
+                <p className="text-xs text-muted-foreground">{it.snapshot.variantLabel}</p>
+              )}
               <p className="text-sm text-muted-foreground">Qty {it.quantity}</p>
             </div>
             <span className="font-medium">{formatCurrency(it.unitPriceCents * it.quantity)}</span>

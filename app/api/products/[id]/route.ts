@@ -31,7 +31,33 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/products/[
       );
     }
     const product = await assertOwnsProduct(id, user.id, user.role === "admin");
-    Object.assign(product, parsed.data);
+
+    // Variants need a MERGE, not a blind assign: reuse each kept combination's
+    // existing subdoc `_id` (cart lines + order items reference it), assign fresh
+    // ids to new rows, and drop rows the seller removed. A plain Object.assign
+    // would regenerate every `_id` and orphan those references.
+    const { variants: incoming, ...rest } = parsed.data;
+    Object.assign(product, rest);
+    if (incoming !== undefined) {
+      const existingIds = new Set(product.variants.map((v) => v._id.toString()));
+      product.set(
+        "variants",
+        incoming.map((v) => {
+          const fields = {
+            options: v.options,
+            priceCents: v.priceCents,
+            inventoryQty: v.inventoryQty,
+            trackInventory: v.trackInventory,
+            weightOz: v.weightOz,
+            sku: v.sku,
+            isActive: v.isActive,
+          };
+          // Keep _id only when it references a real existing subdoc.
+          return v.id && existingIds.has(v.id) ? { _id: v.id, ...fields } : fields;
+        }),
+      );
+    }
+
     await product.save();
     return NextResponse.json({ product: toProductDTO(product.toObject()) });
   } catch (err) {

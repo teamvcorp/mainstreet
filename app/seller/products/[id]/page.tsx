@@ -37,6 +37,17 @@ export default async function EditProductPage({
           images: product.images,
           category: product.category,
           tags: product.tags,
+          optionTypes: (product.optionTypes ?? []).map((t) => ({ name: t.name, values: t.values })),
+          variants: (product.variants ?? []).map((v) => ({
+            id: v._id.toString(),
+            options: v.options.map((o) => ({ name: o.name, value: o.value })),
+            priceCents: v.priceCents,
+            inventoryQty: v.inventoryQty,
+            trackInventory: v.trackInventory,
+            weightOz: v.weightOz,
+            sku: v.sku,
+            isActive: v.isActive,
+          })),
         }}
       />
     </div>

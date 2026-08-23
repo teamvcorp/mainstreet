@@ -34,7 +34,22 @@ export async function POST(request: Request) {
       async (s) => !!(await Product.exists({ businessId: biz._id, slug: s })),
     );
 
-    const product = await Product.create({ ...parsed.data, businessId: biz._id, slug });
+    // Drop any client-sent variant `id` so new products always get fresh subdoc _ids.
+    const { variants, ...rest } = parsed.data;
+    const product = await Product.create({
+      ...rest,
+      variants: (variants ?? []).map((v) => ({
+        options: v.options,
+        priceCents: v.priceCents,
+        inventoryQty: v.inventoryQty,
+        trackInventory: v.trackInventory,
+        weightOz: v.weightOz,
+        sku: v.sku,
+        isActive: v.isActive,
+      })),
+      businessId: biz._id,
+      slug,
+    });
 
     // First product → turn on online shipping by default (shipping is core to the
     // platform). Only on the first item so a seller who later disables it isn't

@@ -156,6 +156,9 @@ const en = {
     theShop: "the shop",
     pickupAvailable: "Local pickup available",
     moreFrom: "More from",
+    from: "from",
+    unavailable: "Unavailable",
+    chooseOptions: "Choose options",
   },
   cart: {
     title: "Your cart",

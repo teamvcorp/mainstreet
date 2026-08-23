@@ -12,6 +12,7 @@ export function markupFactor(): number {
 export interface CartLine {
   productId: string;
   businessId: string;
+  variantId?: string;
   quantity: number;
 }
 
@@ -44,8 +45,15 @@ async function buildParcel(businessId: string, lines: CartLine[]) {
   const products = await Product.find({
     _id: { $in: lines.map((l) => l.productId) },
   })
-    .select("weightOz dimensions")
-    .lean<{ _id: { toString(): string }; weightOz?: number; dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number } }[]>();
+    .select("weightOz dimensions variants")
+    .lean<
+      {
+        _id: { toString(): string };
+        weightOz?: number;
+        dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
+        variants?: { _id: { toString(): string }; weightOz?: number }[];
+      }[]
+    >();
   const byId = new Map(products.map((p) => [p._id.toString(), p]));
 
   let weightOz = 0;
@@ -54,7 +62,10 @@ async function buildParcel(businessId: string, lines: CartLine[]) {
   let heightIn = 0;
   for (const line of lines) {
     const p = byId.get(line.productId);
-    weightOz += (p?.weightOz ?? DEFAULT_WEIGHT_OZ) * line.quantity;
+    // Prefer the selected variant's weight, falling back to the product's.
+    const variant = line.variantId ? (p?.variants ?? []).find((v) => v._id.toString() === line.variantId) : undefined;
+    const lineWeight = variant?.weightOz ?? p?.weightOz ?? DEFAULT_WEIGHT_OZ;
+    weightOz += lineWeight * line.quantity;
     lengthIn = Math.max(lengthIn, p?.dimensions?.lengthIn ?? 0);
     widthIn = Math.max(widthIn, p?.dimensions?.widthIn ?? 0);
     heightIn = Math.max(heightIn, p?.dimensions?.heightIn ?? 0);

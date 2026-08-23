@@ -157,6 +157,9 @@ const es = {
     theShop: "la tienda",
     pickupAvailable: "Recogida local disponible",
     moreFrom: "Más de",
+    from: "desde",
+    unavailable: "No disponible",
+    chooseOptions: "Elige opciones",
   },
   cart: {
     title: "Tu carrito",

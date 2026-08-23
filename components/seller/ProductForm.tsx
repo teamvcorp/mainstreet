@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/seller/ImageUpload";
+import { VariantEditor, type VariantEditorValue } from "@/components/seller/VariantEditor";
 
 export interface ProductInitial {
   id?: string;
@@ -24,9 +25,36 @@ export interface ProductInitial {
   images?: string[];
   category?: string;
   tags?: string[];
+  optionTypes?: { name: string; values: string[] }[];
+  variants?: {
+    id?: string;
+    options: { name: string; value: string }[];
+    priceCents: number;
+    inventoryQty: number;
+    trackInventory?: boolean;
+    weightOz?: number;
+    sku?: string;
+    isActive: boolean;
+  }[];
 }
 
 const dollars = (cents?: number) => (typeof cents === "number" ? (cents / 100).toString() : "");
+
+/** Map the saved product's options/variants into the editor's string-based draft shape. */
+function toEditorValue(initial: ProductInitial): VariantEditorValue {
+  return {
+    optionTypes: (initial.optionTypes ?? []).map((t) => ({ name: t.name, valuesText: t.values.join(", ") })),
+    variants: (initial.variants ?? []).map((v) => ({
+      id: v.id,
+      options: v.options,
+      price: dollars(v.priceCents),
+      stock: (v.inventoryQty ?? 0).toString(),
+      weight: v.weightOz?.toString() ?? "",
+      sku: v.sku ?? "",
+      isActive: v.isActive ?? true,
+    })),
+  };
+}
 
 export function ProductForm({ initial = {} }: { initial?: ProductInitial }) {
   const router = useRouter();
@@ -46,6 +74,7 @@ export function ProductForm({ initial = {} }: { initial?: ProductInitial }) {
   const [category, setCategory] = useState(initial.category ?? "");
   const [tagsText, setTagsText] = useState((initial.tags ?? []).join(", "));
   const [images, setImages] = useState<string[]>(initial.images ?? []);
+  const [variantData, setVariantData] = useState<VariantEditorValue>(() => toEditorValue(initial));
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,6 +94,29 @@ export function ProductForm({ initial = {} }: { initial?: ProductInitial }) {
         ? { lengthIn: num(lengthIn), widthIn: num(widthIn), heightIn: num(heightIn) }
         : undefined;
 
+    // Options/variants: normalize to the API shape. Only send them when there is at
+    // least one option type AND at least one variant row — otherwise this stays a
+    // simple single-price product (send empty arrays to clear any prior variants).
+    const cleanTypes = variantData.optionTypes
+      .map((t) => ({
+        name: t.name.trim(),
+        values: [...new Set(t.valuesText.split(",").map((v) => v.trim()).filter(Boolean))],
+      }))
+      .filter((t) => t.name && t.values.length);
+    const hasVariants = cleanTypes.length > 0 && variantData.variants.length > 0;
+    const cleanVariants = hasVariants
+      ? variantData.variants.map((v) => ({
+          ...(v.id ? { id: v.id } : {}),
+          options: v.options,
+          priceCents: Math.round((num(v.price) ?? 0) * 100),
+          inventoryQty: parseInt(v.stock || "0", 10),
+          trackInventory, // inherit the product-level toggle
+          weightOz: v.weight ? num(v.weight) : undefined,
+          sku: v.sku || undefined,
+          isActive: v.isActive,
+        }))
+      : [];
+
     const payload = {
       name,
       description: description || undefined,
@@ -81,6 +133,8 @@ export function ProductForm({ initial = {} }: { initial?: ProductInitial }) {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+      optionTypes: hasVariants ? cleanTypes : [],
+      variants: cleanVariants,
     };
 
     const res = await fetch(isEdit ? `/api/products/${initial.id}` : "/api/products", {
@@ -200,6 +254,8 @@ export function ProductForm({ initial = {} }: { initial?: ProductInitial }) {
           <Input id="tags" value={tagsText} onChange={(e) => setTagsText(e.target.value)} />
         </div>
       </div>
+
+      <VariantEditor value={variantData} onChange={setVariantData} basePrice={price} />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

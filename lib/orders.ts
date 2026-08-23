@@ -77,6 +77,15 @@ export async function createPendingOrdersForCheckout(input: {
         trackInventory: boolean;
         weightOz?: number;
         dimensions?: { lengthIn?: number; widthIn?: number; heightIn?: number };
+        variants?: {
+          _id: { toString(): string };
+          options: { name: string; value: string }[];
+          priceCents: number;
+          inventoryQty: number;
+          trackInventory: boolean;
+          weightOz?: number;
+          isActive: boolean;
+        }[];
       }[]
     >();
     const pMap = new Map(products.map((p) => [p._id.toString(), p]));
@@ -86,19 +95,39 @@ export async function createPendingOrdersForCheckout(input: {
     for (const line of lines) {
       const p = pMap.get(line.productId);
       if (!p) throw new Error("NOT_FOUND");
-      if (p.trackInventory && p.inventoryQty < line.quantity) throw new Error("OUT_OF_STOCK");
-      subtotal += p.priceCents * line.quantity;
-      lineItems.push({ name: p.name, amountCents: p.priceCents, quantity: line.quantity });
+
+      // Resolve the chosen variant (authoritative price/stock/weight come from the DB).
+      const variant = line.variantId
+        ? (p.variants ?? []).find((v) => v._id.toString() === line.variantId && v.isActive)
+        : undefined;
+      if (line.variantId && !variant) throw new Error("NOT_FOUND");
+      // A product WITH active variants must be bought by variant — reject a bare productId.
+      if (!line.variantId && (p.variants ?? []).some((v) => v.isActive)) throw new Error("NOT_FOUND");
+
+      const unitPriceCents = variant ? variant.priceCents : p.priceCents;
+      const tracks = variant ? variant.trackInventory : p.trackInventory;
+      const stock = variant ? variant.inventoryQty : p.inventoryQty;
+      if (tracks && stock < line.quantity) throw new Error("OUT_OF_STOCK");
+
+      const variantLabel = variant ? variant.options.map((o) => o.value).join(" / ") : undefined;
+      subtotal += unitPriceCents * line.quantity;
+      lineItems.push({
+        name: variantLabel ? `${p.name} — ${variantLabel}` : p.name,
+        amountCents: unitPriceCents,
+        quantity: line.quantity,
+      });
       itemDocs.push({
         productId: p._id as unknown as IOrderItem["productId"],
+        ...(variant ? { variantId: variant._id as unknown as IOrderItem["variantId"] } : {}),
         quantity: line.quantity,
-        unitPriceCents: p.priceCents,
+        unitPriceCents,
         productSnapshot: {
           name: p.name,
           slug: p.slug,
           images: p.images,
-          weightOz: p.weightOz,
+          weightOz: variant?.weightOz ?? p.weightOz,
           dimensions: p.dimensions,
+          ...(variant ? { variantLabel, options: variant.options } : {}),
         },
       });
     }
@@ -205,14 +234,25 @@ export async function markOrderPaid(
 /** Decrement inventory for a paid order's items (best-effort). */
 export async function decrementInventoryForOrder(orderId: string) {
   await connectToDatabase();
-  const items = await OrderItem.find({ orderId }).select("productId quantity").lean<
-    { productId: { toString(): string }; quantity: number }[]
+  const items = await OrderItem.find({ orderId }).select("productId variantId quantity").lean<
+    { productId: { toString(): string }; variantId?: { toString(): string }; quantity: number }[]
   >();
   for (const it of items) {
-    await Product.updateOne(
-      { _id: it.productId.toString(), trackInventory: true },
-      { $inc: { inventoryQty: -it.quantity } },
-    );
+    if (it.variantId) {
+      // Decrement the specific variant subdoc (only if it tracks inventory).
+      await Product.updateOne(
+        {
+          _id: it.productId.toString(),
+          variants: { $elemMatch: { _id: it.variantId.toString(), trackInventory: true } },
+        },
+        { $inc: { "variants.$.inventoryQty": -it.quantity } },
+      );
+    } else {
+      await Product.updateOne(
+        { _id: it.productId.toString(), trackInventory: true },
+        { $inc: { inventoryQty: -it.quantity } },
+      );
+    }
   }
 }
 
@@ -261,7 +301,9 @@ export async function getBuyerOrder(orderId: string, buyerId: string) {
       id: it._id.toString(),
       quantity: it.quantity,
       unitPriceCents: it.unitPriceCents,
-      snapshot: it.productSnapshot as { name?: string; images?: string[] } | undefined,
+      snapshot: it.productSnapshot as
+        | { name?: string; images?: string[]; variantLabel?: string }
+        | undefined,
     })),
   };
 }
