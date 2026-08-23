@@ -64,7 +64,6 @@ export default async function SearchPage({
           query={query}
           townSlug={town}
           adjacentTowns={adjacent.map((t) => ({ name: t.name, state: t.state, slug: t.slug }))}
-          amazonSearchUrl={amazonSearchUrl(query)}
           amazonMatch={amazonMatch}
         />
       </div>

@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { ShoppingBag, ArrowRight } from "lucide-react";
 import { VA_CORP, SISTER_PROGRAMS } from "@/lib/seo";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { T } from "@/components/i18n/T";
 
 /**
  * Site-wide footer.
- * - Addendum A Amazon fallback: the quietest link on the page (small, gray).
+ * - Amazon fallback is intentionally the quietest link on the page (small, gray, at
+ *   the very bottom). The prominent "can't find it locally?" banner is NOT site-wide —
+ *   it appears only when a search returns no local results (see SearchEmptyState).
  * - VA Corp ecosystem backlinks: a dofollow link to the hub + a "Sister
  *   Programs" nav cross-linking the network (see SEO-BACKLINKS.md). Descriptive
  *   anchor text, absolute https URLs, no rel="nofollow" on network links.
@@ -16,32 +17,6 @@ export function SiteFooter() {
 
   return (
     <footer className="mt-16 border-t border-border bg-secondary/60">
-      {/* Amazon store — a clear, tasteful CTA (stronger than the tiny link below,
-          still framed as the "can't find it locally" fallback per Addendum A). */}
-      <div className="border-b border-border bg-primary text-primary-foreground">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-6 sm:flex-row sm:items-center sm:px-6">
-          <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <ShoppingBag className="size-5" />
-            </span>
-            <div>
-              <p className="font-serif text-lg font-semibold">
-                <T k="footer.amazonTitle" />
-              </p>
-              <p className="text-sm text-primary-foreground/80">
-                <T k="footer.amazonBody" />
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/shop"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
-          >
-            <T k="footer.amazonCta" /> <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      </div>
-
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
           <Wordmark className="text-lg text-foreground" />

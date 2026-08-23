@@ -6,6 +6,7 @@ import Image from "next/image";
 import { MapPin, ArrowRight } from "lucide-react";
 import { SuggestBusinessForm } from "@/components/search/SuggestBusinessForm";
 import { AmazonLink } from "@/components/shop/AmazonLink";
+import { AmazonBanner } from "@/components/shop/AmazonBanner";
 import { useT } from "@/components/i18n/I18nProvider";
 
 interface AdjacentTown {
@@ -31,13 +32,11 @@ export function SearchEmptyState({
   query,
   townSlug,
   adjacentTowns,
-  amazonSearchUrl,
   amazonMatch,
 }: {
   query: string;
   townSlug?: string;
   adjacentTowns: AdjacentTown[];
-  amazonSearchUrl?: string;
   amazonMatch?: AmazonMatch | null;
 }) {
   const t = useT();
@@ -81,50 +80,37 @@ export function SearchEmptyState({
         </section>
       )}
 
-      {/* Layer 3 — Amazon fallback (quiet, last) */}
-      {(amazonMatch || amazonSearchUrl) && (
-        <section className="border-t border-border pt-6">
-          {amazonMatch ? (
-            // Silent product card (PA-API): title + price, understated.
-            <AmazonLink
-              href={amazonMatch.url}
-              query={query}
-              className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 no-underline transition-colors hover:bg-muted"
-            >
-              {amazonMatch.imageUrl && (
-                <span className="relative block size-12 shrink-0 overflow-hidden rounded bg-background">
-                  <Image src={amazonMatch.imageUrl} alt="" fill sizes="48px" className="object-contain" />
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-foreground">{amazonMatch.title}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t("search.available")}
-                  {amazonMatch.priceText ? ` · ${amazonMatch.priceText}` : ""}
-                </span>
+      {/* Layer 3 — Amazon fallback (last). Only ever shown here, on a no-results
+          search. When PA-API is live we show the silent matched product; otherwise the
+          prominent "browse the Amazon store" banner. Both carry the search term so the
+          shopper never re-types it. */}
+      <section className="border-t border-border pt-6">
+        {amazonMatch ? (
+          // Silent product card (PA-API): title + price, understated.
+          <AmazonLink
+            href={amazonMatch.url}
+            query={query}
+            className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 no-underline transition-colors hover:bg-muted"
+          >
+            {amazonMatch.imageUrl && (
+              <span className="relative block size-12 shrink-0 overflow-hidden rounded bg-background">
+                <Image src={amazonMatch.imageUrl} alt="" fill sizes="48px" className="object-contain" />
               </span>
-              <ArrowRight className="size-4 text-muted-foreground" />
-            </AmazonLink>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t("search.amazonHint")}{" "}
-              <AmazonLink
-                href={amazonSearchUrl!}
-                query={query}
-                className="text-muted-foreground/80 underline underline-offset-2 hover:text-muted-foreground"
-              >
-                {t("search.seeOnAmazon")} “{query}” {t("search.onAmazon")}
-              </AmazonLink>
-            </p>
-          )}
-          <p className="mt-1 text-xs text-muted-foreground/70">
-            {t("search.proceeds")}{" "}
-            <Link href={`/shop?q=${encodeURIComponent(query)}`} className="underline underline-offset-2">
-              {t("search.moreOptions")}
-            </Link>
-          </p>
-        </section>
-      )}
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-foreground">{amazonMatch.title}</span>
+              <span className="text-xs text-muted-foreground">
+                {t("search.available")}
+                {amazonMatch.priceText ? ` · ${amazonMatch.priceText}` : ""}
+              </span>
+            </span>
+            <ArrowRight className="size-4 text-muted-foreground" />
+          </AmazonLink>
+        ) : (
+          <AmazonBanner query={query} />
+        )}
+        <p className="mt-2 text-xs text-muted-foreground/70">{t("search.proceeds")}</p>
+      </section>
     </div>
   );
 }
