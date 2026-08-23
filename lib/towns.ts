@@ -124,6 +124,19 @@ export async function getTowns(opts: GetTownsOpts = {}): Promise<TownListItem[]>
  * accumulated on the town for zipcode-grouping reports. Race-safe via the unique
  * slug index (a concurrent create just re-reads the winner).
  */
+/**
+ * Canonical town slug from city + state. DETERMINISTIC (no collision suffixing) so
+ * it doubles as the natural key: one town per (city, state). Same city in a different
+ * state gets a different slug (`springfield-il` vs `springfield-mo`); the same
+ * city+state always maps to the same slug, and the unique `slug` index rejects a dupe.
+ * Both the onboarding auto-create and the admin manual-add MUST use this.
+ */
+export function townSlug(city: string, state: string): string {
+  const c = city.trim();
+  const s = state.trim().toUpperCase().slice(0, 2);
+  return slugify(`${c}-${s}`);
+}
+
 export async function findOrCreateTownForAddress(input: {
   city: string;
   state: string;
@@ -134,7 +147,7 @@ export async function findOrCreateTownForAddress(input: {
   await connectToDatabase();
   const city = input.city.trim();
   const state = input.state.trim().toUpperCase().slice(0, 2);
-  const slug = slugify(`${city}-${state}`);
+  const slug = townSlug(city, state);
 
   const existing = await Town.findOne({ slug });
   if (existing) {
