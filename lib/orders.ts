@@ -259,7 +259,8 @@ export async function decrementInventoryForOrder(orderId: string) {
 // --- Buyer-facing (safe DTOs, no confidential fields) --------------------
 export async function listBuyerOrders(buyerId: string) {
   await connectToDatabase();
-  const orders = await Order.find({ buyerId })
+  // Hide never-paid `pending` orders (abandoned checkouts) — an order shows up once paid.
+  const orders = await Order.find({ buyerId, status: { $ne: "pending" } })
     .sort({ createdAt: -1 })
     .populate("businessId", "name slug")
     .lean<(IOrder & { _id: { toString(): string }; businessId?: { name: string; slug: string } })[]>();

@@ -9,7 +9,9 @@ import { toOrderDTO } from "@/lib/dto";
  */
 export async function getSellerOrders(businessId: string) {
   await connectToDatabase();
-  const orders = await Order.find({ businessId })
+  // Only real (paid+) orders. `pending` = a checkout that was started but never
+  // paid (an abandoned cart) — it isn't an order yet, so it's hidden from the list.
+  const orders = await Order.find({ businessId, status: { $ne: "pending" } })
     .sort({ createdAt: -1 })
     .lean<(IOrder & { _id: { toString(): string } })[]>();
   return orders.map(toOrderDTO);
