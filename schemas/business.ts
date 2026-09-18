@@ -44,5 +44,18 @@ export const updateBusinessSchema = z.object({
   bannerUrl: z.url().optional().or(z.literal("")),
   shipsOnline: z.boolean().optional(),
   acceptsLocalPickup: z.boolean().optional(),
+  shipMode: z.enum(["self_ship", "pickup_pack"]).optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
+
+/**
+ * self_ship means Storm Lake emails the label to the business, so an address is
+ * mandatory. Catch only the self-evident case here — clearing the email in the very
+ * same request that selects self_ship. Whether an email EXISTS depends on the stored
+ * business (and its owner), which zod cannot see, so the authoritative check lives in
+ * PATCH /api/businesses/[id].
+ */
+export const updateBusinessRefined = updateBusinessSchema.refine(
+  (d) => !(d.shipMode === "self_ship" && d.email === ""),
+  { path: ["email"], message: "A business email is required to have labels emailed to you." },
+);

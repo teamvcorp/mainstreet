@@ -2,6 +2,19 @@ import { Schema, model, models, type Model, type Types } from "mongoose";
 
 export type MembershipTier = "listed" | "seller" | "featured" | "premium";
 
+/**
+ * How a paid parcel reaches the carrier (Storm Lake Pack & Ship Partner API `mode`).
+ *
+ * Deliberately NOT named `fulfillmentMode`: Order.fulfillmentType ("ship" | "pickup")
+ * already exists and means whether the BUYER collects in person. These are orthogonal
+ * — a "ship" order still needs one of these modes, and conflating them causes bugs.
+ *
+ *  - self_ship   → Storm Lake emails the label to the business; they ship it.
+ *  - pickup_pack → Storm Lake collects and packs. Retail INCLUDES their packing fee,
+ *                  so this choice changes the price and must be known when rating.
+ */
+export type ShipMode = "self_ship" | "pickup_pack";
+
 export interface BusinessAddress {
   street?: string;
   city?: string;
@@ -42,6 +55,8 @@ export interface IBusiness {
   extraItemBlocks: number;
   shipsOnline: boolean;
   acceptsLocalPickup: boolean;
+  /** self_ship requires `email` (or the owner’s) — that is where the label is sent. */
+  shipMode: ShipMode;
   isActive: boolean;
   /** Admin has confirmed this is a real local business (vs. spam/unverified). */
   verified: boolean;
@@ -79,6 +94,11 @@ const BusinessSchema = new Schema<IBusiness>(
     extraItemBlocks: { type: Number, default: 0 },
     shipsOnline: { type: Boolean, default: false },
     acceptsLocalPickup: { type: Boolean, default: true },
+    shipMode: {
+      type: String,
+      enum: ["self_ship", "pickup_pack"],
+      default: "pickup_pack",
+    },
     isActive: { type: Boolean, default: true },
     verified: { type: Boolean, default: false },
   },

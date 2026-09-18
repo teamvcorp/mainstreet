@@ -12,23 +12,19 @@ export interface CheckoutSelection {
   service?: string;
 }
 
-export interface StripeLineItem {
-  name: string;
-  amountCents: number;
-  quantity: number;
-}
-
 export interface PreparedCheckout {
   orderIds: string[];
-  lineItems: StripeLineItem[];
+  /** Authoritative, server-computed amount. This is what the buyer is charged. */
   grandTotalCents: number;
 }
 
 /**
- * Create one PENDING order per business from the cart. Prices come from the DB
- * (never the client), inventory is checked, and the confidential carrier cost +
- * margin are stored but never surfaced. Returns Stripe line items for a hosted
- * Checkout Session.
+ * Create one PENDING order per business from the cart.
+ *
+ * Prices, stock and parcel weights all come from the DB, never the client, and
+ * shipping is re-quoted server-side. The quote id we charge against is persisted so
+ * the label can later be bought for that exact rate (Storm Lake quotes are
+ * single-use, ~30 min TTL).
  */
 export async function createPendingOrdersForCheckout(input: {
   buyerId: string;
@@ -52,7 +48,6 @@ export async function createPendingOrdersForCheckout(input: {
   }
 
   const orderIds: string[] = [];
-  const lineItems: StripeLineItem[] = [];
   let grand = 0;
 
   for (const [businessId, lines] of byBiz) {
@@ -111,11 +106,6 @@ export async function createPendingOrdersForCheckout(input: {
 
       const variantLabel = variant ? variant.options.map((o) => o.value).join(" / ") : undefined;
       subtotal += unitPriceCents * line.quantity;
-      lineItems.push({
-        name: variantLabel ? `${p.name} — ${variantLabel}` : p.name,
-        amountCents: unitPriceCents,
-        quantity: line.quantity,
-      });
       itemDocs.push({
         productId: p._id as unknown as IOrderItem["productId"],
         ...(variant ? { variantId: variant._id as unknown as IOrderItem["variantId"] } : {}),
@@ -132,7 +122,8 @@ export async function createPendingOrdersForCheckout(input: {
       });
     }
 
-    const choice = input.selections[businessId] ?? { mode: "pickup" as const };
+    const choice = input.selections[businessId];
+    if (!choice) throw new Error("SHIPPING_SELECTION_MISSING");
     const ship = await resolveShippingChoice(businessId, lines, addr, choice);
     const shippingCents = ship.consumerCents;
     const total = subtotal + shippingCents;
@@ -145,6 +136,8 @@ export async function createPendingOrdersForCheckout(input: {
       fulfillmentType: choice.mode === "ship" ? "ship" : "pickup",
       subtotalCents: subtotal,
       shippingCents,
+      // Retail is all the partner ever reports, so carrierCost == shipping and the
+      // platform fee is 0: the shipping spread belongs to Storm Lake now.
       carrierCostCents: ship.carrierCents,
       platformFeeCents: Math.max(0, shippingCents - ship.carrierCents),
       taxCents: 0,
@@ -159,16 +152,16 @@ export async function createPendingOrdersForCheckout(input: {
       },
       carrier: ship.carrier,
       service: ship.service,
+      shipQuoteId: ship.quoteId,
+      shipQuoteExpiresAt: ship.quoteExpiresAt,
+      shipMode: ship.shipMode,
     });
 
     await OrderItem.insertMany(itemDocs.map((d) => ({ ...d, orderId: order._id })));
-    if (shippingCents > 0) {
-      lineItems.push({ name: `Shipping — ${biz.name}`, amountCents: shippingCents, quantity: 1 });
-    }
     orderIds.push(order._id.toString());
   }
 
-  return { orderIds, lineItems, grandTotalCents: grand };
+  return { orderIds, grandTotalCents: grand };
 }
 
 /**

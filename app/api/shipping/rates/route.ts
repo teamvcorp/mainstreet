@@ -5,8 +5,12 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { errorResponse } from "@/lib/api";
 
 /**
- * Per-business shipping options for the cart. Returns ONLY consumer prices
- * (already marked up) — carrier cost never leaves lib/shipping.
+ * Per-business shipping options for the cart.
+ *
+ * Returns retail prices exactly as Storm Lake quotes them (no markup) and, notably,
+ * NOT the underlying quoteIds — the browser has no use for them and we re-quote
+ * authoritatively at order time. These figures are a DISPLAY quote; the amount the
+ * buyer is actually charged comes from the server-side re-quote in lib/orders.
  */
 export async function POST(request: Request) {
   try {
@@ -21,9 +25,9 @@ export async function POST(request: Request) {
     }
     const { toAddress, items } = parsed.data;
 
+    // Rating needs only the destination: the partner API fixes the origin to Storm
+    // Lake, and the recipient's name/street matter at /shipments, not at /rates.
     const shipping = await computeCartShipping(items, {
-      name: toAddress.name,
-      street1: toAddress.street,
       city: toAddress.city,
       state: toAddress.state,
       zip: toAddress.zip,

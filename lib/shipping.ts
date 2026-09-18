@@ -1,13 +1,25 @@
 import { connectToDatabase } from "@/lib/db";
-import { Business } from "@/lib/models/Business";
+import { Business, type ShipMode } from "@/lib/models/Business";
 import { Product } from "@/lib/models/Product";
-import { getCarrierRates, type Address } from "@/lib/easypost";
+import { User } from "@/lib/models/User";
+import { getRates, type Destination, type RateQuote } from "@/lib/slpacknship";
 
-/** Consumer-rate multiplier over the carrier cost — the hidden spread. */
-export function markupFactor(): number {
-  const n = parseFloat(process.env.SHIPPING_MARKUP ?? "1.85");
-  return Number.isFinite(n) && n > 0 ? n : 1.85;
-}
+/**
+ * Shipping pricing + policy layer.
+ *
+ * Rates come from Storm Lake Pack & Ship at RETAIL and are charged to the buyer
+ * unchanged — there is no markup any more (see docs/slpacknship.md). Two facts from
+ * the partner contract shape this file:
+ *
+ *  - The ORIGIN IS FIXED to Storm Lake and is never sent, so a seller's ZIP has no
+ *    effect on price. (The old EasyPost flow rated from `business.address.zip`.)
+ *  - `mode` is priced at QUOTE time — pickup_pack retail includes Storm Lake's
+ *    packing fee — so each shop's `shipMode` must be read before rating.
+ *
+ * And one rule: we FAIL CLOSED. A label can only be produced from a real stored
+ * quote, so there is no estimate fallback; if we cannot price shipping we refuse to
+ * create the order rather than guess and eat the difference.
+ */
 
 export interface CartLine {
   productId: string;
@@ -16,12 +28,17 @@ export interface CartLine {
   quantity: number;
 }
 
+/**
+ * A buyer-facing shipping choice. Note what is ABSENT: the `quoteId`. The browser
+ * never needs it (we re-quote authoritatively at order time), so we do not widen the
+ * attack surface by sending it.
+ */
 export interface ShipOption {
-  id: string; // "carrier:service" — stable key for selection
+  id: string; // "carrier:serviceCode" — stable key for selection
   label: string;
   carrier: string;
-  service: string;
-  amountCents: number; // consumer price (marked up) — safe to expose
+  service: string; // serviceCode — matched on, not the display name
+  amountCents: number; // retail, exactly what the buyer pays
   deliveryDays?: number;
 }
 
@@ -31,17 +48,23 @@ export interface BusinessShipping {
   shipsOnline: boolean;
   pickupAvailable: boolean;
   options: ShipOption[]; // best 2–3
+  /** True when the shop ships but the partner API could not be reached just now. */
+  ratesUnavailable?: boolean;
 }
 
 const DEFAULT_WEIGHT_OZ = 8;
 
-function serviceLabel(carrier: string, service: string): string {
-  const pretty = service.replace(/([a-z])([A-Z])/g, "$1 $2");
-  return `${carrier} ${pretty}`;
+function serviceLabel(carrier: string, serviceName: string): string {
+  // The API returns lowercase carriers ("ups", "fedex", "usps") and a display name
+  // that usually already includes the carrier ("UPS Ground"), so avoid "UPS UPS Ground".
+  const name = serviceName?.trim() || carrier.toUpperCase();
+  return name.toLowerCase().startsWith(carrier.toLowerCase())
+    ? name
+    : `${carrier.toUpperCase()} ${name}`;
 }
 
-/** Build the combined parcel + origin zip for one business's items. */
-async function buildParcel(businessId: string, lines: CartLine[]) {
+/** Build the combined parcel for one business's items. */
+async function buildParcel(lines: CartLine[]) {
   const products = await Product.find({
     _id: { $in: lines.map((l) => l.productId) },
   })
@@ -63,7 +86,9 @@ async function buildParcel(businessId: string, lines: CartLine[]) {
   for (const line of lines) {
     const p = byId.get(line.productId);
     // Prefer the selected variant's weight, falling back to the product's.
-    const variant = line.variantId ? (p?.variants ?? []).find((v) => v._id.toString() === line.variantId) : undefined;
+    const variant = line.variantId
+      ? (p?.variants ?? []).find((v) => v._id.toString() === line.variantId)
+      : undefined;
     const lineWeight = variant?.weightOz ?? p?.weightOz ?? DEFAULT_WEIGHT_OZ;
     weightOz += lineWeight * line.quantity;
     lengthIn = Math.max(lengthIn, p?.dimensions?.lengthIn ?? 0);
@@ -79,44 +104,52 @@ async function buildParcel(businessId: string, lines: CartLine[]) {
 }
 
 /** Cheapest + fastest, de-duplicated, capped at 3. */
-function pickBest(
-  rates: { carrier: string; service: string; consumerCents: number; deliveryDays?: number }[],
-): ShipOption[] {
+function pickBest(rates: RateQuote[]): ShipOption[] {
   if (rates.length === 0) return [];
-  const cheapest = [...rates].sort((a, b) => a.consumerCents - b.consumerCents)[0];
+  const cheapest = [...rates].sort((a, b) => a.retailCents - b.retailCents)[0];
   const fastest = [...rates].sort(
-    (a, b) => (a.deliveryDays ?? 99) - (b.deliveryDays ?? 99) || a.consumerCents - b.consumerCents,
+    (a, b) => (a.estimatedDays ?? 99) - (b.estimatedDays ?? 99) || a.retailCents - b.retailCents,
   )[0];
   const chosen = [cheapest, fastest];
   // add a third distinct middle option if available
   const rest = rates.filter((r) => r !== cheapest && r !== fastest);
-  if (rest.length) chosen.push(rest.sort((a, b) => a.consumerCents - b.consumerCents)[0]);
+  if (rest.length) chosen.push(rest.sort((a, b) => a.retailCents - b.retailCents)[0]);
 
   const seen = new Set<string>();
   const out: ShipOption[] = [];
   for (const r of chosen) {
-    const id = `${r.carrier}:${r.service}`;
+    const id = `${r.carrier}:${r.serviceCode}`;
     if (seen.has(id)) continue;
     seen.add(id);
     out.push({
       id,
-      label: serviceLabel(r.carrier, r.service),
+      label: serviceLabel(r.carrier, r.serviceName),
       carrier: r.carrier,
-      service: r.service,
-      amountCents: r.consumerCents,
-      deliveryDays: r.deliveryDays,
+      service: r.serviceCode,
+      amountCents: r.retailCents,
+      deliveryDays: r.estimatedDays,
     });
   }
   return out;
 }
 
-/** Per-business shipping options for the checkout page (consumer rates only). */
+function toDestination(to: Destination): Destination {
+  return {
+    zip: to.zip,
+    city: to.city,
+    state: to.state,
+    // Consumer orders are residential. Under-declaring does not save the buyer
+    // anything (the quote is locked) — it lands a surcharge on Storm Lake.
+    residential: true,
+  };
+}
+
+/** Per-business shipping options for the checkout page. */
 export async function computeCartShipping(
   lines: CartLine[],
-  to: Address,
+  to: Destination,
 ): Promise<BusinessShipping[]> {
   await connectToDatabase();
-  const factor = markupFactor();
 
   const byBiz = new Map<string, CartLine[]>();
   for (const l of lines) {
@@ -126,91 +159,139 @@ export async function computeCartShipping(
 
   const out: BusinessShipping[] = [];
   for (const [businessId, bizLines] of byBiz) {
-    try {
-      const biz = await Business.findById(businessId)
-        .select("name address shipsOnline acceptsLocalPickup")
-        .lean<{ name: string; address?: { zip?: string }; shipsOnline?: boolean; acceptsLocalPickup?: boolean }>();
-      if (!biz) continue;
+    const biz = await Business.findById(businessId)
+      .select("name shipsOnline acceptsLocalPickup shipMode")
+      .lean<{
+        name: string;
+        shipsOnline?: boolean;
+        acceptsLocalPickup?: boolean;
+        shipMode?: ShipMode;
+      }>();
+    if (!biz) continue;
 
-      let options: ShipOption[] = [];
-      const fromZip = biz.address?.zip;
-      if (biz.shipsOnline && fromZip) {
-        const parcel = await buildParcel(businessId, bizLines);
-        const carrierRates = await getCarrierRates(fromZip, to, parcel);
-        options = pickBest(
-          carrierRates.map((r) => ({
-            carrier: r.carrier,
-            service: r.service,
-            consumerCents: Math.round(r.carrierCents * factor),
-            deliveryDays: r.deliveryDays,
-          })),
-        );
+    let options: ShipOption[] = [];
+    let ratesUnavailable = false;
+
+    if (biz.shipsOnline) {
+      try {
+        const parcel = await buildParcel(bizLines);
+        const quoted = await getRates(toDestination(to), parcel, biz.shipMode ?? "pickup_pack");
+        options = pickBest(quoted.rates);
+        // Reachable but empty (e.g. nothing serves that ZIP) is still "unavailable"
+        // to the buyer — say so rather than silently implying pickup-only.
+        ratesUnavailable = options.length === 0;
+      } catch (err) {
+        // One shop failing must not break the whole cart's rates, but we do NOT
+        // fall back to an estimate: an invented rate has no quoteId and could
+        // never be turned into a label.
+        console.error(`computeCartShipping: rates failed for business ${businessId} —`, err);
+        ratesUnavailable = true;
       }
-
-      out.push({
-        businessId,
-        businessName: biz.name,
-        shipsOnline: !!biz.shipsOnline,
-        pickupAvailable: !!biz.acceptsLocalPickup,
-        options,
-      });
-    } catch (err) {
-      // One shop failing shouldn't break the whole cart's rates. Surface a
-      // pickup-only fallback for it so checkout can still proceed.
-      console.error(`computeCartShipping: business ${businessId} failed —`, err);
-      out.push({
-        businessId,
-        businessName: "This shop",
-        shipsOnline: false,
-        pickupAvailable: true,
-        options: [],
-      });
     }
+
+    out.push({
+      businessId,
+      businessName: biz.name,
+      shipsOnline: !!biz.shipsOnline,
+      pickupAvailable: !!biz.acceptsLocalPickup,
+      options,
+      ...(ratesUnavailable ? { ratesUnavailable: true } : {}),
+    });
   }
   return out;
 }
 
 export interface ResolvedShipping {
   consumerCents: number;
+  /**
+   * Retail is all the partner ever tells us (contract §8), so this equals
+   * `consumerCents` and `platformFeeCents` works out to 0. Kept because the Order
+   * schema and the reconcile math still reference it — the shipping margin now
+   * belongs to Storm Lake, not MainStreet.
+   */
   carrierCents: number;
   carrier?: string;
   service?: string;
+  /** Single-use, ~30 min TTL. Persisted so the label buys the rate we charged for. */
+  quoteId?: string;
+  quoteExpiresAt?: Date;
+  shipMode?: ShipMode;
 }
 
 /**
- * Authoritatively resolve a buyer's chosen shipping for one business at order
- * time. Recomputes rates server-side (never trusts client amounts) and returns
- * BOTH the consumer price and the confidential carrier cost.
+ * Authoritatively resolve a buyer's chosen shipping for one business at order time.
+ *
+ * Re-quotes server-side (never trusts client amounts) and returns the retail price
+ * plus the `quoteId` the label must later be bought against. Throws rather than ever
+ * returning a silent zero — a "ship" order with no shipping charged is a direct loss
+ * now that no markup cushions it.
  */
 export async function resolveShippingChoice(
   businessId: string,
   lines: CartLine[],
-  to: Address,
+  to: Destination,
   choice: { mode: "ship" | "pickup"; carrier?: string; service?: string },
 ): Promise<ResolvedShipping> {
-  if (choice.mode === "pickup") return { consumerCents: 0, carrierCents: 0 };
-
   await connectToDatabase();
-  const biz = await Business.findById(businessId).select("address shipsOnline").lean<{
-    address?: { zip?: string };
-    shipsOnline?: boolean;
-  }>();
-  const fromZip = biz?.address?.zip;
-  if (!biz?.shipsOnline || !fromZip) return { consumerCents: 0, carrierCents: 0 };
+  const biz = await Business.findById(businessId)
+    .select("shipsOnline acceptsLocalPickup shipMode")
+    .lean<{ shipsOnline?: boolean; acceptsLocalPickup?: boolean; shipMode?: ShipMode }>();
+  if (!biz) throw new Error("NOT_FOUND");
 
-  const parcel = await buildParcel(businessId, lines);
-  const rates = await getCarrierRates(fromZip, to, parcel);
-  const factor = markupFactor();
+  if (choice.mode === "pickup") {
+    // Previously accepted unconditionally, so a shop offering neither shipping nor
+    // pickup still produced free pickup orders.
+    if (!biz.acceptsLocalPickup) throw new Error("PICKUP_NOT_OFFERED");
+    return { consumerCents: 0, carrierCents: 0 };
+  }
 
-  const match =
-    rates.find((r) => r.carrier === choice.carrier && r.service === choice.service) ??
-    [...rates].sort((a, b) => a.carrierCents - b.carrierCents)[0];
-  if (!match) return { consumerCents: 0, carrierCents: 0 };
+  if (!biz.shipsOnline) throw new Error("SHIPPING_NOT_OFFERED");
+
+  const shipMode = biz.shipMode ?? "pickup_pack";
+  const parcel = await buildParcel(lines);
+
+  let quoted;
+  try {
+    quoted = await getRates(toDestination(to), parcel, shipMode);
+  } catch (err) {
+    console.error(`resolveShippingChoice: rates failed for business ${businessId} —`, err);
+    throw new Error("SHIPPING_UNAVAILABLE");
+  }
+
+  // Match the buyer's pick exactly. The old code substituted the cheapest rate when
+  // the chosen service vanished, which silently changed both price and service; with
+  // a real label to buy, failing is the correct behavior.
+  const match = quoted.rates.find(
+    (r) => r.carrier === choice.carrier && r.serviceCode === choice.service,
+  );
+  if (!match) throw new Error("SHIP_OPTION_UNAVAILABLE");
 
   return {
-    consumerCents: Math.round(match.carrierCents * factor),
-    carrierCents: match.carrierCents,
+    consumerCents: match.retailCents,
+    carrierCents: match.retailCents,
     carrier: match.carrier,
-    service: match.service,
+    service: match.serviceCode,
+    quoteId: match.quoteId,
+    quoteExpiresAt: quoted.quoteExpiresAt,
+    shipMode,
   };
+}
+
+/**
+ * Where Storm Lake should email a `self_ship` label.
+ *
+ * The business's own address wins; otherwise fall back to the owner's login email so
+ * a shop that never filled in a contact address can still choose self_ship.
+ */
+export async function resolveLabelEmail(businessId: string): Promise<string | undefined> {
+  await connectToDatabase();
+  const biz = await Business.findById(businessId).select("email ownerId").lean<{
+    email?: string;
+    ownerId?: { toString(): string };
+  }>();
+  if (!biz) return undefined;
+  if (biz.email) return biz.email;
+  if (!biz.ownerId) return undefined;
+  const owner = await User.findById(biz.ownerId).select("email").lean<{ email?: string }>();
+  return owner?.email;
 }

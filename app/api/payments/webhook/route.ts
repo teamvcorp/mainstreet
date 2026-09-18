@@ -10,6 +10,7 @@ import {
 } from "@/lib/orders";
 import { applySubscription } from "@/lib/billing";
 import { settleShippingAdjustment } from "@/lib/reconcile";
+import { createShipmentForOrder } from "@/lib/fulfillment";
 import { sendEmail } from "@/lib/email";
 import { packAndShipHandoffEmail, type OrderEmailItem } from "@/lib/order-emails";
 import { buildOrderConfirmation } from "@/emails/OrderConfirmation";
@@ -22,10 +23,14 @@ interface FinalizeCtx {
 }
 
 /**
- * Finalize each paid sub-order: transfer the seller's subtotal (shipping stays on
- * the platform), decrement inventory, email buyer confirmation + SL Pack & Ship
- * handoff. Each order is isolated so one failure can't abort the batch (the
- * idempotency record is already written, so an aborted batch would never re-run).
+ * Finalize each paid sub-order: transfer the seller's subtotal, decrement inventory,
+ * create the real shipment with Storm Lake, and send the buyer + ops emails. Each
+ * order is isolated so one failure can't abort the batch (the idempotency record is
+ * already written, so an aborted batch would never re-run).
+ *
+ * The transfer happens BEFORE shipment creation on purpose: a partner API problem
+ * must not fail this handler, or Stripe would retry the delivery and re-run the
+ * transfers with it. createShipmentForOrder never throws for that reason.
  */
 async function finalizeOrders(orderIds: string[], ctx: FinalizeCtx) {
   const transferGroup = orderIds[0] ? `grp_${orderIds[0]}` : undefined;
@@ -60,6 +65,16 @@ async function finalizeOrders(orderIds: string[], ctx: FinalizeCtx) {
       });
       await decrementInventoryForOrder(orderId);
 
+      // Buy the real label / book the pickup. Only possible now: the partner will not
+      // produce a label without a succeeded PaymentIntent covering the quote.
+      const shipment =
+        order.fulfillmentType === "ship"
+          ? await createShipmentForOrder(orderId, ctx.piId)
+          : { status: "skipped" as const, reason: "pickup order" };
+      if (shipment.status === "failed") {
+        console.error(`Order ${orderId}: shipment creation failed — ${shipment.reason}`);
+      }
+
       const emailItems: OrderEmailItem[] = items.map((it) => {
         const snap = (it.productSnapshot ?? {}) as {
           name?: string;
@@ -93,7 +108,17 @@ async function finalizeOrders(orderIds: string[], ctx: FinalizeCtx) {
         });
       }
 
-      if (order.fulfillmentType === "ship" && process.env.SHIPIT_EMAIL) {
+      /*
+        Ops handoff, now scoped to pickup_pack only.
+
+        For self_ship the partner emails the label straight to the business, so this
+        would be noise. For pickup_pack it is still REQUIRED: the /shipments request
+        carries no origin or business field (the contract fixes the origin to Storm
+        Lake), so this email is the only thing telling them which local shop to
+        collect from and what is in the box. See open question 7 in docs/slpacknship.md.
+      */
+      const shipMode = order.shipMode ?? "pickup_pack";
+      if (order.fulfillmentType === "ship" && shipMode === "pickup_pack" && process.env.SHIPIT_EMAIL) {
         await sendEmail({
           to: process.env.SHIPIT_EMAIL,
           ...packAndShipHandoffEmail({

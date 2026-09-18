@@ -9,7 +9,7 @@ Set for Production (+ Preview/Development as needed). See `.env.example` for the
 - **Core**: `MONGODB_URI`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL=https://mainstreet-shops.com`
 - **Auth (optional)**: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
 - **Stripe**: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
-- **Shipping**: `EASYPOST_API_KEY` (optional; estimate fallback), `SHIPPING_MARKUP=1.85`, `SHIPIT_EMAIL=shipit@slpacknship.com`
+- **Shipping**: `SLPS_PARTNER_ID` + `SLPS_PARTNER_SECRET` (**required** — shipping fails closed without them), optional `SLPS_BASE_URL`, `SHIPIT_EMAIL=shipit@slpacknship.com` (pickup_pack handoff). Never set `SLPS_DEV_STUB` in production (it is ignored there anyway).
 - **Storage**: `BLOB_READ_WRITE_TOKEN` — **create a Vercel Blob store and connect it** (Storage tab), else uploads 503
 - **Email**: `RESEND_API_KEY`, `EMAIL_FROM=MainStreet <hello@fyht4.com>` (must be the **fyht4.com** verified domain)
 - **Cron**: `CRON_SECRET` (any random string)

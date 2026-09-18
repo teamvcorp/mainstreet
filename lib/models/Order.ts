@@ -1,4 +1,5 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
+import type { ShipMode } from "@/lib/models/Business";
 
 export type OrderStatus =
   | "pending"
@@ -44,8 +45,22 @@ export interface IOrder {
   shippingReconciled?: boolean;
   /** When an off-session adjustment charge failed: the buyer-pay Checkout session id. */
   shippingAdjustmentSessionId?: string;
-  easypostRateId?: string;
-  easypostShipmentId?: string;
+  /**
+   * Storm Lake Pack & Ship quote the buyer actually paid for. Single-use with a
+   * ~30 min TTL, so the label MUST be bought against this exact id — that is why we
+   * persist it (the old easypostRateId/easypostShipmentId were declared but never
+   * written, because the EasyPost flow never bought labels).
+   */
+  shipQuoteId?: string;
+  shipQuoteExpiresAt?: Date;
+  /** "shp_…" returned by POST /api/partner/shipments. */
+  shipmentId?: string;
+  /** Snapshotted at order time so a later settings change cannot rewrite history. */
+  shipMode?: ShipMode;
+  /** self_ship only — where Storm Lake emailed the label. */
+  labelEmailedTo?: string;
+  /** Set when shipment creation failed after payment; needs an admin retry. */
+  shipmentFailedReason?: string;
   carrier?: string;
   service?: string;
   trackingNumber?: string;
@@ -90,8 +105,12 @@ const OrderSchema = new Schema<IOrder>(
     stripePaymentMethodId: String,
     shippingReconciled: { type: Boolean, default: false },
     shippingAdjustmentSessionId: String,
-    easypostRateId: String,
-    easypostShipmentId: String,
+    shipQuoteId: String,
+    shipQuoteExpiresAt: Date,
+    shipmentId: String,
+    shipMode: { type: String, enum: ["self_ship", "pickup_pack"] },
+    labelEmailedTo: String,
+    shipmentFailedReason: String,
     carrier: String,
     service: String,
     trackingNumber: String,

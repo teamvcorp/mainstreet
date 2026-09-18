@@ -58,9 +58,14 @@ export async function POST(request: Request) {
       metadata: { orderIds: prepared.orderIds.join(","), buyerId: user.id },
     });
 
+    // Return the AUTHORITATIVE total. The checkout page previously rendered its own
+    // client-side sum on the pay button while Stripe charged this figure, with nothing
+    // comparing the two — and shipping is re-quoted server-side here, so they can
+    // legitimately differ. The client shows this number and flags any change.
     return NextResponse.json({
       clientSecret: intent.client_secret,
       orderIds: prepared.orderIds,
+      grandTotalCents: prepared.grandTotalCents,
     });
   } catch (err) {
     return errorResponse(err);

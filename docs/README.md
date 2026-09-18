@@ -11,7 +11,7 @@ learn something non-obvious. (Org policy: keep docs on-machine; take detailed no
 - **Search:** MongoDB Atlas Search (platform-only) — see `atlas-search.md`
 - **Storage:** Vercel Blob — see `vercel-blob.md`
 - **Payments:** Stripe Connect Express + subscriptions — see `stripe-connect.md`
-- **Shipping:** EasyPost (rates only) + manual SL Pack & Ship email handoff — see `easypost.md`
+- **Shipping:** Storm Lake Pack & Ship Partner API (retail rates + real labels) — see `slpacknship.md`
 - **Email:** Resend + React Email — see `resend.md`
 - **Rate limiting:** Upstash Redis — see `upstash.md`
 - **Geocoding/maps:** Google Maps — see `google-maps.md`
@@ -72,6 +72,28 @@ Optional keys unlock extras later: Stripe (checkout/payouts, Phase 4+), Resend (
 - **Product options & variants**: sellers define option axes (any names — Size, Flavor, Color…) on a product and generate a **variant matrix**, each combination with its own price/stock/weight/SKU (`components/seller/VariantEditor.tsx`). Storefront picker (`ProductBuyBox`) resolves the chosen combo; cart keys lines by `productId:variantId`; the server re-prices/decrements the specific variant; variant labels flow into orders + emails. Products with no options are unchanged. ✅ build-green. See `product-variants.md`.
 
 - **Shipping = estimate → reconcile**: checkout charges an **estimate** and **saves the card** (Stripe `customer` + `setup_future_usage=off_session`; webhook stores customer + payment method). Admin enters the **final buyer shipping** at `/admin/orders` → `reconcileShipping` charges the difference off-session (or refunds if less); on off-session failure it emails the buyer a hosted **pay-link** and flags the order (settled via webhook). Estimate knobs are env-configurable (`SHIP_EST_*` + `SHIPPING_MARKUP`). EasyPost auto-label plan shelved (they wanted no upfront payment info). ✅ build-green + reconcile endpoint gated. See `checkout.md`.
+
+- **Shipping cutover → Storm Lake Pack & Ship Partner API** (supersedes the two EasyPost
+  entries above): rates now come from the partner at **retail and are charged as-is — the
+  1.85× markup, `SHIPPING_MARKUP` and the `SHIP_EST_*` estimate knobs are all deleted, and
+  `lib/easypost.ts` + `@easypost/api` are removed**. The API also **produces the label**, so
+  fulfillment is no longer a manual admin step. New `Business.shipMode`: `self_ship` (label
+  emailed to the shop) or `pickup_pack` (Storm Lake collects & packs; default), chosen on
+  `/seller/store` — and it changes the price, since `pickup_pack` retail includes their
+  packing fee. Origin is **fixed to Storm Lake**, so a seller's ZIP no longer affects rates.
+  Orders persist the single-use `shipQuoteId` so the label buys the rate the buyer paid for;
+  the webhook creates the shipment after the transfer and never throws. `pickup_pack`
+  tracking is backfilled by an hourly cron (no partner webhook exists).
+  **Money model: MainStreet keeps nothing on shipping** — `platformFeeCents` is 0, the spread
+  is Storm Lake's, revenue is membership only, and the admin KPI is now "Shipping billed".
+  **Fails closed** — no synthetic estimate, because a made-up rate has no quote and can never
+  become a label (`SLPS_DEV_STUB=1` for local testing). Also fixed in the same pass: the buyer
+  was shown a client-side total while Stripe charged an independently re-quoted server total
+  (now returns + renders `grandTotalCents`); `resolveShippingChoice` could silently return
+  $0 shipping or substitute the cheapest service; pickup was never validated against
+  `acceptsLocalPickup`; and concurrent reconciles could double-refund (now a deterministic
+  Stripe idempotency key + compare-and-swap). ✅ build-green, typecheck clean, no new lint.
+  See `slpacknship.md` (incl. 8 open contract questions), `checkout.md`, `fulfillment.md`.
 
 ## Manual test steps that need live credentials
 Add to `.env.local` then run `npm run dev`:

@@ -30,6 +30,7 @@ export default async function StoreProfilePage() {
           bannerUrl: biz.bannerUrl,
           shipsOnline: biz.shipsOnline,
           acceptsLocalPickup: biz.acceptsLocalPickup,
+          shipMode: biz.shipMode,
         }}
       />
     </div>

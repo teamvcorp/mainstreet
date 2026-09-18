@@ -185,7 +185,11 @@ const en = {
     changeShipping: "Change shipping",
     secure: "Secure checkout by Stripe. Your card details never leave this page.",
     estimateNote:
-      "Shipping shown is an estimate. Your card is saved securely and the final shipping is adjusted (charged or refunded) after your order is packed.",
+      "Shipping is the live carrier rate for your address, charged exactly as quoted. Your card is saved securely with Stripe in case shipping needs a rare adjustment after packing.",
+    totalChanged:
+      "Shipping rates changed while you were checking out, so your total is now",
+    ratesUnavailable:
+      "Shipping rates for this shop aren’t available right now. Please try again in a moment.",
     emptyTitle: "Your cart is empty.",
   },
   orders: {

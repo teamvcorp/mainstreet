@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
 import { connectToDatabase } from "@/lib/db";
 import { Business } from "@/lib/models/Business";
-import { updateBusinessSchema } from "@/schemas/business";
+import { User } from "@/lib/models/User";
+import { updateBusinessRefined } from "@/schemas/business";
 import { geocodeAddress } from "@/lib/geocode";
 import { toBusinessDTO } from "@/lib/dto";
 import { errorResponse } from "@/lib/api";
@@ -13,7 +14,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/businesses
     const user = await requireUser();
     const { id } = await ctx.params;
     const body = await request.json().catch(() => null);
-    const parsed = updateBusinessSchema.safeParse(body);
+    const parsed = updateBusinessRefined.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid input", issues: parsed.error.flatten().fieldErrors },
@@ -43,6 +44,23 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/businesses
     }
 
     Object.assign(biz, data);
+
+    // self_ship means Storm Lake emails the label to the business, so an address is
+    // mandatory. Checked HERE rather than in zod because the answer depends on stored
+    // state: the business email, or the owner login email we fall back to.
+    if (biz.shipMode === "self_ship") {
+      const owner = await User.findById(biz.ownerId).select("email").lean<{ email?: string }>();
+      if (!biz.email && !owner?.email) {
+        return NextResponse.json(
+          {
+            error: "Add a business email before choosing to have labels emailed to you.",
+            issues: { email: ["Required for emailed shipping labels."] },
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     await biz.save();
 
     return NextResponse.json({ business: toBusinessDTO(biz.toObject()) });

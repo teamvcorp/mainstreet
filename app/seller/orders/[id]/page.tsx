@@ -54,8 +54,17 @@ export default async function SellerOrderDetail({ params }: { params: Promise<{ 
                 Ship to: {a.name}, {a.street}, {a.city} {a.state} {a.zip} · {a.phone}
               </p>
             )}
+            {/*
+              The two ship modes need different copy. self_ship means the seller has the
+              label in their inbox and is expected to act; pickup_pack means Storm Lake
+              collects it and tracking arrives later via the backfill cron.
+            */}
             <p className="mt-1 text-muted-foreground">
-              {order.trackingNumber ? `Tracking: ${order.trackingNumber}` : "Tracking will appear once SL Pack & Ship processes it."}
+              {order.trackingNumber
+                ? `Tracking: ${order.trackingNumber}`
+                : order.shipMode === "self_ship"
+                  ? `Shipping label emailed to ${order.labelEmailedTo ?? "your business email"} — print it and hand the parcel to the carrier.`
+                  : "Storm Lake Pack & Ship will collect and pack this. Tracking appears once it ships."}
             </p>
             {order.labelUrl && (
               <a
@@ -93,7 +102,7 @@ export default async function SellerOrderDetail({ params }: { params: Promise<{ 
       <div className="mt-4 rounded-xl border border-border bg-card p-4 text-sm">
         <div className="flex justify-between"><span className="text-muted-foreground">Product subtotal</span><span>{formatCurrency(order.subtotalCents)}</span></div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Shipping is handled by MainStreet — you keep 100% of your product sales.
+          Shipping is arranged through Storm Lake Pack &amp; Ship — you keep 100% of your product sales.
         </p>
       </div>
     </div>

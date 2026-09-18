@@ -45,6 +45,7 @@ export function toBusinessDTO(b: IBusiness & WithId) {
     itemLimit: b.itemLimit,
     shipsOnline: b.shipsOnline,
     acceptsLocalPickup: b.acceptsLocalPickup,
+    shipMode: b.shipMode,
     stripeAccountActive: b.stripeAccountActive,
     isActive: b.isActive,
     // NOTE: stripeAccountId intentionally omitted from client payloads.
@@ -105,6 +106,8 @@ export function toOrderDTO(o: IOrder & WithId) {
     service: o.service,
     trackingNumber: o.trackingNumber,
     labelUrl: o.labelUrl,
+    shipMode: o.shipMode,
+    labelEmailedTo: o.labelEmailedTo,
     shippedAt: iso(o.shippedAt),
     deliveredAt: iso(o.deliveredAt),
     createdAt: iso(o.createdAt),
@@ -123,6 +126,9 @@ export function toAdminOrderDTO(o: IOrder & WithId) {
     platformFeeCents: o.platformFeeCents,
     stripePaymentIntentId: o.stripePaymentIntentId,
     stripeTransferId: o.stripeTransferId,
+    shipmentId: o.shipmentId,
+    shipQuoteId: o.shipQuoteId,
+    shipmentFailedReason: o.shipmentFailedReason,
   };
 }
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateBusinessSchema, type UpdateBusinessInput } from "@/schemas/business";
+import { updateBusinessRefined, type UpdateBusinessInput } from "@/schemas/business";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ export interface StoreProfileInitial {
   bannerUrl?: string;
   shipsOnline?: boolean;
   acceptsLocalPickup?: boolean;
+  shipMode?: "self_ship" | "pickup_pack";
 }
 
 export function StoreProfileForm({ initial }: { initial: StoreProfileInitial }) {
@@ -39,7 +40,7 @@ export function StoreProfileForm({ initial }: { initial: StoreProfileInitial }) 
     handleSubmit,
     formState: { isSubmitting },
   } = useForm<UpdateBusinessInput>({
-    resolver: zodResolver(updateBusinessSchema),
+    resolver: zodResolver(updateBusinessRefined),
     defaultValues: {
       name: initial.name,
       category: initial.category,
@@ -51,6 +52,7 @@ export function StoreProfileForm({ initial }: { initial: StoreProfileInitial }) 
       address: initial.address ?? {},
       shipsOnline: initial.shipsOnline,
       acceptsLocalPickup: initial.acceptsLocalPickup,
+      shipMode: initial.shipMode ?? "pickup_pack",
     },
   });
 
@@ -147,6 +149,44 @@ export function StoreProfileForm({ initial }: { initial: StoreProfileInitial }) 
           <input type="checkbox" className="size-4 accent-accent" {...register("acceptsLocalPickup")} />
           Offers local pickup
         </label>
+
+        {/*
+          How a sold item reaches the carrier. This changes the buyer's price, because
+          the pack-and-ship option includes Storm Lake's packing fee in the quoted rate.
+        */}
+        <fieldset className="mt-4 space-y-2 rounded-lg border border-border p-3">
+          <legend className="px-1 text-sm font-medium">When something sells</legend>
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="radio"
+              value="pickup_pack"
+              className="mt-0.5 size-4 accent-accent"
+              {...register("shipMode")}
+            />
+            <span>
+              <span className="font-medium">We pick it up and ship it</span>
+              <span className="block text-xs text-muted-foreground">
+                Storm Lake Pack &amp; Ship collects the item, packs it, and ships it. Nothing
+                for you to do. Packing is included in the shipping the buyer pays.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="radio"
+              value="self_ship"
+              className="mt-0.5 size-4 accent-accent"
+              {...register("shipMode")}
+            />
+            <span>
+              <span className="font-medium">Email me a shipping label</span>
+              <span className="block text-xs text-muted-foreground">
+                You pack it and hand it to the carrier. The label is emailed to your
+                business email as soon as the order is paid — so keep that address current.
+              </span>
+            </span>
+          </label>
+        </fieldset>
       </section>
 
       <div className="flex items-center gap-3">

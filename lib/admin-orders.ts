@@ -17,15 +17,23 @@ export interface AdminOrderRow {
   trackingNumber?: string;
   labelUrl?: string;
   shippingReconciled?: boolean;
+  shipMode?: "self_ship" | "pickup_pack";
+  shipmentId?: string;
+  labelEmailedTo?: string;
+  /** Set when the partner shipment could not be created after payment. Needs a retry. */
+  shipmentFailedReason?: string;
   business?: { name: string; slug: string } | null;
   buyerEmail?: string;
   shippingAddress?: IOrder["shippingAddress"];
 }
 
 /**
- * Orders for the admin fulfillment/margin view. Includes the confidential
- * carrier cost + margin — this is the ONE place they're exposed, and only after
- * an admin role check by the caller.
+ * Orders for the admin fulfillment view.
+ *
+ * `carrierCostCents` / `marginCents` are retained but are no longer a real margin:
+ * Storm Lake reports retail only, so cost == what the buyer paid and the margin is 0.
+ * Still admin-gated — the caller checks the role — but nothing here is a secret spread
+ * any more. See docs/slpacknship.md.
  */
 export async function getOrdersForAdmin(): Promise<AdminOrderRow[]> {
   await connectToDatabase();
@@ -57,6 +65,10 @@ export async function getOrdersForAdmin(): Promise<AdminOrderRow[]> {
     trackingNumber: o.trackingNumber,
     labelUrl: o.labelUrl,
     shippingReconciled: o.shippingReconciled,
+    shipMode: o.shipMode,
+    shipmentId: o.shipmentId,
+    labelEmailedTo: o.labelEmailedTo,
+    shipmentFailedReason: o.shipmentFailedReason,
     business: o.businessId ? { name: o.businessId.name, slug: o.businessId.slug } : null,
     buyerEmail: o.buyerId?.email,
     shippingAddress: o.shippingAddress,

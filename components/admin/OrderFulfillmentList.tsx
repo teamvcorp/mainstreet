@@ -188,6 +188,30 @@ function OrderRow({ order }: { order: AdminOrderRow }) {
         </div>
       )}
 
+      {/*
+        A shipment that could not be created after payment is the one state that needs a
+        human: the buyer has paid but nothing is moving. Surface it loudly with the
+        partner's own reason rather than leaving it in the server logs.
+      */}
+      {order.shipmentFailedReason && (
+        <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+          <p className="text-sm font-medium">Shipment not created — needs attention</p>
+          <p className="mt-1 break-words text-xs text-muted-foreground">
+            {order.shipmentFailedReason}
+          </p>
+        </div>
+      )}
+
+      {/* How this parcel reaches the carrier, and where a self_ship label was sent. */}
+      {order.fulfillmentType === "ship" && order.shipMode && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {order.shipMode === "self_ship"
+            ? `Label emailed to the shop${order.labelEmailedTo ? ` (${order.labelEmailedTo})` : ""}`
+            : "Pickup & pack by Storm Lake"}
+          {order.shipmentId ? ` · ${order.shipmentId}` : ""}
+        </p>
+      )}
+
       {/* Shipping reconciliation — enter the final buyer shipping; charge/refund the difference */}
       {order.fulfillmentType === "ship" && (
         <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">

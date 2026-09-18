@@ -13,13 +13,20 @@ Functions). We build the same product on the Vercel/MongoDB stack. Mapping:
 | Supabase Realtime | Server render + ~30s client poll (no realtime vendor) |
 | Supabase Edge Functions (webhooks) | Next.js Route Handlers, signature-verified + idempotent via `WebhookEvent` ledger |
 
-## Fulfillment flow (confirmed with owner)
-1. Checkout: EasyPost returns rates → apply `SHIPPING_MARKUP` (1.85, hidden) → show best 2–3.
-2. On payment success: order → `paid`; email `SHIPIT_EMAIL` (shipit@slpacknship.com),
-   subject `!! important`, with receiver name/address/phone + full package info.
-3. SL Pack & Ship physically ships, then logs into an **admin** screen and attaches the
-   **tracking number + label PDF** (Blob) to the order.
-4. That surfaces on the seller's **order-history** page (reprintable) and the buyer's tracking.
+## Fulfillment flow
+1. Checkout: **Storm Lake Pack & Ship Partner API** returns **retail** rates → charged to the
+   buyer as-is (**no markup**). Origin is fixed to Storm Lake and never sent.
+2. On payment success: order → `paid`; the webhook creates the real shipment. Each business
+   chooses `shipMode`:
+   - `self_ship` → the label is **emailed to the business**; tracking returns at once.
+   - `pickup_pack` → Storm Lake **collects and packs**; we also email `SHIPIT_EMAIL`
+     (`!! important`) because the API request carries no origin/business field.
+3. `pickup_pack` tracking is backfilled by an hourly cron polling the partner's shipment
+   history (the contract has no webhook).
+4. Tracking + label surface on the seller's order detail (reprintable) and buyer tracking.
+   `/admin/orders` stays for exceptions and manual overrides.
+
+See `slpacknship.md`, `checkout.md`, `fulfillment.md`.
 
 ## Membership
 - Seller: **$150/yr** (Stripe subscription on the platform account), base **10** items.
@@ -27,6 +34,7 @@ Functions). We build the same product on the Vercel/MongoDB stack. Mapping:
 - Free "listed" tier remains (directory-only).
 
 ## Money & payments
-- All amounts in **cents**. PaymentIntent on platform; `transfer_data.destination` = seller;
-  transfer amount = subtotal only (shipping revenue stays on platform). We take **no cut** of
-  product sales — revenue is membership + shipping spread.
+- All amounts in **cents**. PaymentIntent on platform; transfer amount = subtotal only. We
+  take **no cut** of product sales, and **none of shipping** either: rates are retail
+  pass-through, so `platformFeeCents` is 0 and the spread belongs to Storm Lake.
+  **Revenue is membership only.**

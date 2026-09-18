@@ -186,7 +186,11 @@ const es = {
     changeShipping: "Cambiar envío",
     secure: "Pago seguro con Stripe. Los datos de tu tarjeta nunca salen de esta página.",
     estimateNote:
-      "El envío mostrado es una estimación. Tu tarjeta se guarda de forma segura y el envío final se ajusta (cargo o reembolso) después de empacar tu pedido.",
+      "El envío es la tarifa real del transportista para tu dirección y se cobra tal como se muestra. Tu tarjeta se guarda de forma segura con Stripe por si el envío necesita un ajuste excepcional después de empacar.",
+    totalChanged:
+      "Las tarifas de envío cambiaron mientras finalizabas la compra, por lo que tu total ahora es",
+    ratesUnavailable:
+      "Las tarifas de envío de esta tienda no están disponibles en este momento. Inténtalo de nuevo en un momento.",
     emptyTitle: "Tu carrito está vacío.",
   },
   orders: {
