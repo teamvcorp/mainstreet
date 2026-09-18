@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Truck, MapPin } from "lucide-react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useCart, cartSubtotalCents } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,8 @@ interface BusinessShipping {
   shipsOnline: boolean;
   pickupAvailable: boolean;
   options: ShipOption[];
+  /** Shop ships, but we could not reach the carrier API just now. */
+  ratesUnavailable?: boolean;
 }
 interface Selection {
   mode: "ship" | "pickup";
@@ -37,8 +40,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const t = useT();
   const items = useCart((s) => s.items);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const hydrated = useHydrated();
 
   const [address, setAddress] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
   const [shipping, setShipping] = useState<BusinessShipping[] | null>(null);
@@ -50,12 +52,16 @@ export default function CheckoutPage() {
   // the current intent; if the buyer edits shipping we abandon them and recreate.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderIds, setOrderIds] = useState<string[]>([]);
+  // The server re-quotes shipping when it creates the pending orders, so its total is
+  // the one Stripe charges. We render THAT on the pay button, and tell the buyer when
+  // it differs from the estimate they were just looking at.
+  const [serverTotalCents, setServerTotalCents] = useState<number | null>(null);
   const clearCart = useCart((s) => s.clear);
 
   const subtotal = cartSubtotalCents(items);
   const shippingTotal = Object.values(selections).reduce((n, s) => n + s.amountCents, 0);
 
-  if (mounted && items.length === 0) {
+  if (hydrated && items.length === 0) {
     return (
       <div className="mx-auto max-w-xl px-4 py-20 text-center sm:px-6">
         <p className="font-serif text-2xl">{t("checkout.emptyTitle")}</p>
@@ -70,6 +76,7 @@ export default function CheckoutPage() {
   async function getRates() {
     setError(null);
     setClientSecret(null); // address/rate change invalidates any created intent
+    setServerTotalCents(null);
     setLoadingRates(true);
     try {
       const res = await fetch("/api/shipping/rates", {
@@ -108,10 +115,12 @@ export default function CheckoutPage() {
   // Any change to shipping invalidates a created intent — force a re-continue.
   function chooseShip(b: BusinessShipping, o: ShipOption) {
     setClientSecret(null);
+    setServerTotalCents(null);
     setSelections((s) => ({ ...s, [b.businessId]: { mode: "ship", carrier: o.carrier, service: o.service, amountCents: o.amountCents } }));
   }
   function choosePickup(b: BusinessShipping) {
     setClientSecret(null);
+    setServerTotalCents(null);
     setSelections((s) => ({ ...s, [b.businessId]: { mode: "pickup", amountCents: 0 } }));
   }
 
@@ -139,6 +148,9 @@ export default function CheckoutPage() {
         return;
       }
       setOrderIds(data.orderIds ?? []);
+      setServerTotalCents(
+        typeof data.grandTotalCents === "number" ? data.grandTotalCents : null,
+      );
       setClientSecret(data.clientSecret);
     } catch {
       setError("Something went wrong starting checkout.");
@@ -225,6 +237,16 @@ export default function CheckoutPage() {
                   </span>
                 </label>
               )}
+              {/*
+                Say plainly that rates are down rather than showing only "local pickup"
+                and letting the buyer infer this shop is pickup-only. We never invent an
+                estimate: a made-up rate has no quote behind it and could not be shipped.
+              */}
+              {b.shipsOnline && b.ratesUnavailable && (
+                <p className="text-sm text-muted-foreground">
+                  {t("checkout.ratesUnavailable")}
+                </p>
+              )}
               {!b.shipsOnline && !b.pickupAvailable && (
                 <p className="text-sm text-muted-foreground">This shop hasn&apos;t enabled shipping or pickup yet.</p>
               )}
@@ -256,15 +278,29 @@ export default function CheckoutPage() {
           </Button>
         ) : (
           <div className="mt-4">
+            {/*
+              Charge the SERVER total, never the client-side sum. Shipping was
+              re-quoted when the pending orders were created, so if a rate moved the
+              buyer sees the new figure and an explanation before they pay.
+            */}
+            {serverTotalCents !== null && serverTotalCents !== subtotal + shippingTotal && (
+              <p className="mb-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs">
+                {t("checkout.totalChanged")}{" "}
+                <strong>{formatCurrency(serverTotalCents)}</strong>.
+              </p>
+            )}
             <PaymentForm
               clientSecret={clientSecret}
               returnPath="/orders/success"
-              submitLabel={`${t("checkout.pay")} ${formatCurrency(subtotal + shippingTotal)}`}
+              submitLabel={`${t("checkout.pay")} ${formatCurrency(serverTotalCents ?? subtotal + shippingTotal)}`}
               onSuccess={onPaid}
             />
             <button
               type="button"
-              onClick={() => setClientSecret(null)}
+              onClick={() => {
+                setClientSecret(null);
+                setServerTotalCents(null);
+              }}
               className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
             >
               {t("checkout.changeShipping")}

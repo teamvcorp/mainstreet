@@ -43,6 +43,9 @@ export function isAmazonApiConfigured(): boolean {
  * Resources: ItemInfo.Title, Offers.Listings.Price, Images.Primary.Medium) and
  * map the first result to AmazonMatch — every caller lights up automatically.
  */
+// `query` is unused only until the PA-API SearchItems call below is implemented; keeping the
+// parameter documents the intended signature so callers do not have to change later.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getAmazonTopMatch(query: string): Promise<AmazonMatch | null> {
   if (!isAmazonApiConfigured()) return null;
   try {

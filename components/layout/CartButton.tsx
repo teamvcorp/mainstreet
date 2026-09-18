@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useCart, cartCount } from "@/lib/cart";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Header cart badge. Renders the count only after mount to avoid a hydration
@@ -11,9 +11,8 @@ import { useCart, cartCount } from "@/lib/cart";
  */
 export function CartButton() {
   const items = useCart((s) => s.items);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const count = mounted ? cartCount(items) : 0;
+  const hydrated = useHydrated();
+  const count = hydrated ? cartCount(items) : 0;
 
   return (
     <Link

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingCart, Package } from "lucide-react";
 import { useCart, cartSubtotalCents, groupByBusiness, lineKey } from "@/lib/cart";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/components/i18n/I18nProvider";
@@ -14,10 +14,9 @@ export default function CartPage() {
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const hydrated = useHydrated();
 
-  if (!mounted) return <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6" />;
+  if (!hydrated) return <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6" />;
 
   if (items.length === 0) {
     return (

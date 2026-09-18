@@ -20,19 +20,24 @@ export function EventApprovalList() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/events");
-      const data = await res.json();
-      setEvents(data.events ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // The initial fetch is inlined rather than calling load(): load() sets state synchronously,
+  // and a synchronous setState inside an effect schedules a redundant extra render pass
+  // (react-hooks/set-state-in-effect). `loading` already starts true, so there is nothing to
+  // set before awaiting. The cancelled flag avoids setting state after unmount.
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/events");
+        const data = await res.json();
+        if (!cancelled) setEvents(data.events ?? []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function act(id: string, action: "approve" | "reject") {

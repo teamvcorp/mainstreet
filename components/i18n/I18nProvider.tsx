@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import en from "@/lib/i18n/en";
 import { DICTIONARIES, resolvePath } from "@/lib/i18n/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n/locales";
@@ -25,21 +32,38 @@ function readCookieLocale(): Locale {
   return isLocale(m?.[1]) ? (m![1] as Locale) : DEFAULT_LOCALE;
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+/** The cookie changes only via setLocale, which re-renders on its own. */
+const subscribeToCookie = () => () => {};
 
-  // After hydration, adopt the persisted locale (avoids SSR/client mismatch).
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  /**
+   * The persisted locale, read WITHOUT an effect.
+   *
+   * React uses the server snapshot during SSR and hydration, then the client snapshot after -
+   * so English stays the SSR/SSG baseline (keeping town/store pages statically generated and
+   * English-indexed) and the cookie locale is adopted once hydrated. Previously this was a
+   * setState inside an effect, which React 19 flags because it forces a second render pass for
+   * something useSyncExternalStore reports directly.
+   *
+   * getSnapshot returns a string primitive, so it compares by value and cannot loop.
+   */
+  const cookieLocale = useSyncExternalStore(
+    subscribeToCookie,
+    readCookieLocale,
+    () => DEFAULT_LOCALE,
+  );
+  // An explicit in-session choice outranks the cookie until the next full load.
+  const [override, setOverride] = useState<Locale | null>(null);
+  const locale: Locale = override ?? cookieLocale;
+
+  // Syncing <html lang> IS a legitimate effect: writing React state out to the DOM.
   useEffect(() => {
-    const cookieLocale = readCookieLocale();
-    if (cookieLocale !== locale) setLocaleState(cookieLocale);
-    document.documentElement.lang = cookieLocale;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {
     document.cookie = `NEXT_LOCALE=${l}; path=/; max-age=31536000; samesite=lax`;
-    document.documentElement.lang = l;
-    setLocaleState(l);
+    setOverride(l);
   }, []);
 
   const t = useCallback(

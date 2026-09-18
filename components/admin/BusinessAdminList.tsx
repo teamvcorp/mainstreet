@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BadgeCheck, ShieldOff, Trash2, ExternalLink, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { AdminBusinessRow } from "@/lib/admin";
 
 export function BusinessAdminList({ businesses }: { businesses: AdminBusinessRow[] }) {
