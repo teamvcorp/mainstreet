@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Store, CalendarDays, Truck, TrendingUp, Lightbulb, MapPin, Users, Mail } from "lucide-react";
+import { Store, CalendarDays, Truck, TrendingUp, Lightbulb, MapPin, Users, Mail, Mailbox } from "lucide-react";
 import { getPlatformStats } from "@/lib/admin-stats";
 import { formatCurrency } from "@/lib/utils";
 
@@ -17,8 +17,11 @@ export default async function AdminHome() {
 
   const kpis = stats
     ? [
-        { label: "Revenue collected", value: formatCurrency(stats.revenueCents) },
-        { label: "Shipping margin", value: formatCurrency(stats.marginCents), accent: true },
+        { label: "Revenue collected", value: formatCurrency(stats.revenueCents), accent: true },
+        // Shipping is a pass-through now: we charge Storm Lake’s retail price with no
+        // markup, so the old "Shipping margin" (platformFeeCents) is always 0 and the
+        // spread belongs to Storm Lake. Show billed volume instead. See docs/slpacknship.md.
+        { label: "Shipping billed", value: formatCurrency(stats.shippingCents) },
         { label: "Seller earnings (GMV)", value: formatCurrency(stats.gmvCents) },
         { label: "Paid orders", value: String(stats.orders) },
         { label: "Active members", value: String(stats.activeMembers) },
@@ -37,6 +40,7 @@ export default async function AdminHome() {
     { href: "/admin/towns", icon: MapPin, title: "Towns", body: "Hero, tagline, activate." },
     { href: "/admin/users", icon: Users, title: "Users", body: "Roles, password resets." },
     { href: "/admin/digest", icon: Mail, title: "Weekly digest", body: "Preview / send now." },
+    { href: "/admin/prospects", icon: Mailbox, title: "Prospects", body: "Build mailing lists by city or ZIP." },
   ];
 
   return (
